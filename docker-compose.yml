@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  gosshd:
+    image: golang:latest
+    ports:
+      - 2222:2222
+    volumes:
+      - ../sshr:/go/src/sshr
+    working_dir: /go/src/sshr
+    command: make server
