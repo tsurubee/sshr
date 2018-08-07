@@ -34,14 +34,6 @@
   version = "v1.0.6"
 
 [[projects]]
-  branch = "base"
-  digest = "1:8eda9c49cfea998a042a14817c08936ed2f5135f6e7c11fdf401c61c08b540a9"
-  name = "github.com/tsurubee/sshr"
-  packages = ["sshr"]
-  pruneopts = "UT"
-  revision = "8f893df148b4412adfa020ec97b814595d1c2a60"
-
-[[projects]]
   branch = "master"
   digest = "1:ef77dec87f5e13c7a5d29f2f101c8ddee174e9a81c17c60c7df75039b593951b"
   name = "golang.org/x/crypto"
@@ -76,7 +68,6 @@
     "github.com/BurntSushi/toml",
     "github.com/Gurpartap/logrus-stack",
     "github.com/sirupsen/logrus",
-    "github.com/tsurubee/sshr/sshr",
     "golang.org/x/crypto/ssh",
   ]
   solver-name = "gps-cdcl"

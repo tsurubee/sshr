@@ -23,6 +23,26 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 
 }
 
+func setServerConfig() (*ssh.ServerConfig, error) {
+	serverConfig := &ssh.ServerConfig{
+		// ToDo
+		// PasswordCallback
+		// PublicKeyCallback
+		NoClientAuth: true,
+	}
+	privateKeyBytes, err := ioutil.ReadFile("id_rsa")
+	if err != nil {
+		return nil, err
+	}
+
+	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+	serverConfig.AddHostKey(privateKey)
+	return serverConfig, nil
+}
+
 func (server * SSHServer) Listen() (err error) {
 	server.listener, err = net.Listen("tcp", server.config.ListenAddr)
 	if err != nil {
@@ -34,22 +54,10 @@ func (server * SSHServer) Listen() (err error) {
 }
 
 func (server * SSHServer) Serve() error {
-	serverConfig := &ssh.ServerConfig{
-		// ToDo
-		// PasswordCallback
-		// PublicKeyCallback
-		NoClientAuth: true,
-	}
-	privateKeyBytes, err := ioutil.ReadFile("id_rsa")
+	serverConfig, err := setServerConfig()
 	if err != nil {
 		return err
 	}
-
-	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
-	if err != nil {
-		return err
-	}
-	serverConfig.AddHostKey(privateKey)
 
 	for {
 		conn, err := server.listener.Accept()

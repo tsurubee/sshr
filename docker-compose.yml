@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  gosshd:
+  ssh-proxy:
     image: golang:latest
     ports:
       - 2222:2222
