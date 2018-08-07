@@ -5,6 +5,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
+	"fmt"
 )
 
 type SSHServer struct {
@@ -43,6 +44,18 @@ func setServerConfig() (*ssh.ServerConfig, error) {
 	return serverConfig, nil
 }
 
+func startSSHProxy(conn net.Conn, serverConfig *ssh.ServerConfig) error {
+	_, _, _, err := ssh.NewServerConn(conn, serverConfig)
+	if err != nil {
+		return err
+	}
+
+	// client
+	host, err := findUpstreamByUsername("tsurubee")
+	fmt.Print(host)
+	return nil
+}
+
 func (server * SSHServer) Listen() (err error) {
 	server.listener, err = net.Listen("tcp", server.config.ListenAddr)
 	if err != nil {
@@ -68,7 +81,7 @@ func (server * SSHServer) Serve() error {
 		}
 		logrus.Info("SSH Client connected ", "clientIp ", conn.RemoteAddr())
 
-		// ToDo goroutine
+		go startSSHProxy(conn, serverConfig)
 	}
 }
 
