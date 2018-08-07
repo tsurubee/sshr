@@ -3,6 +3,8 @@ package sshr
 import (
 	"net"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
+	"io/ioutil"
 )
 
 type SSHServer struct {
@@ -27,13 +29,39 @@ func (server * SSHServer) Listen() (err error) {
 		return err
 	}
 
-	logrus.Info("Listening address ", server.listener.Addr())
+	logrus.Info("Start Listening...")
 	return err
 }
 
 func (server * SSHServer) Serve() error {
-	logrus.Info("Serve")
-	return nil
+	serverConfig := &ssh.ServerConfig{
+		// ToDo
+		// PasswordCallback
+		// PublicKeyCallback
+		NoClientAuth: true,
+	}
+	privateKeyBytes, err := ioutil.ReadFile("id_rsa")
+	if err != nil {
+		return err
+	}
+
+	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
+	if err != nil {
+		return err
+	}
+	serverConfig.AddHostKey(privateKey)
+
+	for {
+		conn, err := server.listener.Accept()
+		if err != nil {
+			if server.listener != nil {
+				return err
+			}
+		}
+		logrus.Info("SSH Client connected ", "clientIp ", conn.RemoteAddr())
+
+		// ToDo goroutine
+	}
 }
 
 func (server * SSHServer) ListenAndServe() error {
