@@ -6,6 +6,6 @@ services:
     ports:
       - 2222:2222
     volumes:
-      - ../sshr:/go/src/sshr
-    working_dir: /go/src/sshr
+      - ../sshr:/go/src/github.com/tsurubee/sshr
+    working_dir: /go/src/github.com/tsurubee/sshr
     command: make server
