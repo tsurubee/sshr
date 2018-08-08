@@ -4,13 +4,16 @@ import (
 	"net"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
-	"io/ioutil"
-	"fmt"
+	"strings"
 )
 
+type middlewareFunc func(*Context, string) error
+type middleware map[string]middlewareFunc
+
 type SSHServer struct {
-	listener net.Listener
-	config   *config
+	listener   net.Listener
+	config     *config
+	middleware middleware
 }
 
 func NewSSHServer(confFile string) (*SSHServer, error) {
@@ -18,45 +21,73 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 	if err != nil {
 		return nil, err
 	}
+	m := middleware{}
 	return &SSHServer{
-		config: c,
+		config:     c,
+		middleware: m,
 	}, nil
-
 }
 
-func setServerConfig() (*ssh.ServerConfig, error) {
-	serverConfig := &ssh.ServerConfig{
-		// ToDo
-		// PasswordCallback
-		// PublicKeyCallback
-		NoClientAuth: true,
-	}
-	privateKeyBytes, err := ioutil.ReadFile("id_rsa")
-	if err != nil {
-		return nil, err
-	}
-
-	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	serverConfig.AddHostKey(privateKey)
-	return serverConfig, nil
+func (server *SSHServer) Use(command string, m middlewareFunc) {
+	server.middleware[strings.ToUpper(command)] = m
 }
 
-func startSSHProxy(conn net.Conn, serverConfig *ssh.ServerConfig) error {
-	_, _, _, err := ssh.NewServerConn(conn, serverConfig)
+func getUsername(sshConn *ssh.ServerConn) (string, error) {
+	return "tsurubee", nil
+}
+
+func getPassword(sshConn *ssh.ServerConn) (string, error) {
+	return "password", nil
+}
+
+func startSSHProxy(conn net.Conn, c *config) error {
+	sshConn, _, _, err := ssh.NewServerConn(conn, c.ServerConfig)
+	if err != nil {
+		return err
+	}
+	// Get username and password from SSH session
+	username, err := getUsername(sshConn)
+	password, err := getPassword(sshConn)
 	if err != nil {
 		return err
 	}
 
 	// client
-	host, err := findUpstreamByUsername("tsurubee")
-	fmt.Print(host)
+	context := newContext(c)
+	if err := FindUpstreamByUsername(context, username); err != nil {
+		return err
+	}
+	ClientConfig := &ssh.ClientConfig{
+		User: username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+			//ssh.PublicKeys("keys"),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	sshClient, err := ssh.Dial("tcp", context.UpstreamHost + ":22", ClientConfig)
+	if err != nil {
+		return err
+	}
+	defer sshClient.Close()
+
+	sess, err := sshClient.NewSession()
+	if err != nil {
+		return err
+	}
+	defer sess.Close()
+
+	//ToDo
+	// pty
+
+	//ToDo
+	//client <-> proxy <-> upstream
+	//dual-directional io.Copy
 	return nil
 }
 
-func (server * SSHServer) Listen() (err error) {
+func (server *SSHServer) Listen() (err error) {
 	server.listener, err = net.Listen("tcp", server.config.ListenAddr)
 	if err != nil {
 		return err
@@ -66,12 +97,7 @@ func (server * SSHServer) Listen() (err error) {
 	return err
 }
 
-func (server * SSHServer) Serve() error {
-	serverConfig, err := setServerConfig()
-	if err != nil {
-		return err
-	}
-
+func (server *SSHServer) Serve() error {
 	for {
 		conn, err := server.listener.Accept()
 		if err != nil {
@@ -81,11 +107,11 @@ func (server * SSHServer) Serve() error {
 		}
 		logrus.Info("SSH Client connected ", "clientIp ", conn.RemoteAddr())
 
-		go startSSHProxy(conn, serverConfig)
+		go startSSHProxy(conn, server.config)
 	}
 }
 
-func (server * SSHServer) ListenAndServe() error {
+func (server *SSHServer) ListenAndServe() error {
 	if err := server.Listen(); err != nil {
 		return err
 	}

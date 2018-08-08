@@ -1,11 +1,15 @@
 package sshr
 
-import "errors"
+import (
+	"errors"
+)
 
-func findUpstreamByUsername(username string) (string, error) {
+func FindUpstreamByUsername(c *Context, username string) error {
+	// ToDo: Find upstream host from RESTful API
 	if username == "tsurubee" {
-		return "host-tsurubee", nil
-	} else  {
-		return "", errors.New(username + "'s host is not found!")
+		c.UpstreamHost = "host-tsurubee"
+		return nil
+	} else {
+		return errors.New(username + "'s host is not found!")
 	}
 }

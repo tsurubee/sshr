@@ -20,6 +20,7 @@ func main() {
 		logrus.Fatal(err)
 	}
 
+	sshServer.Use("findUpstream", sshr.FindUpstreamByUsername)
 	if err := sshServer.ListenAndServe(); err != nil {
 		logrus.Fatal(err)
 	}

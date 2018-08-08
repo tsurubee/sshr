@@ -2,11 +2,15 @@ package sshr
 
 import (
 	"github.com/BurntSushi/toml"
+	"golang.org/x/crypto/ssh"
+	"io/ioutil"
 )
 
 type config struct {
-	ListenAddr string `toml:"listen_addr"`
-	RemoteAddr string `toml:"remote_addr"`
+	ListenAddr   string            `toml:"listen_addr"`
+	RemoteAddr   string            `toml:"remote_addr"`
+	ServerConfig *ssh.ServerConfig
+	ClientConfig *ssh.ClientConfig
 }
 
 func loadConfig(path string) (*config, error) {
@@ -17,7 +21,34 @@ func loadConfig(path string) (*config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	ServerConfig, err := setServerConfig()
+	if err != nil {
+		return nil, err
+	}
+	c.ServerConfig = ServerConfig
+
 	return &c, nil
+}
+
+func setServerConfig() (*ssh.ServerConfig, error) {
+	serverConfig := &ssh.ServerConfig{
+		// ToDo:
+		// PasswordCallback
+		// PublicKeyCallback
+		NoClientAuth: true,
+	}
+	privateKeyBytes, err := ioutil.ReadFile("id_rsa")
+	if err != nil {
+		return nil, err
+	}
+
+	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+	serverConfig.AddHostKey(privateKey)
+	return serverConfig, nil
 }
 
 func defaultConfig(config *config) {
