@@ -19,7 +19,7 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 		return nil, err
 	}
 	return &SSHServer{
-		config:             c,
+		config: c,
 	}, nil
 }
 
@@ -43,7 +43,11 @@ func (server *SSHServer) Serve() error {
 		}
 		logrus.Info("SSH Client connected ", "clientIp ", conn.RemoteAddr())
 
-		// goroutine
+		go func() {
+			if err := NewSSHPipeConn(conn, server.config); err != nil {
+				return
+			}
+		}()
 	}
 }
 
