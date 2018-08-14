@@ -9,6 +9,7 @@ import (
 type config struct {
 	ListenAddr   string            `toml:"listen_addr"`
 	RemoteAddr   string            `toml:"remote_addr"`
+	AuthType     string            `toml:"auth_type"`
 	ServerConfig *ssh.ServerConfig
 	ClientConfig *ssh.ClientConfig
 }
@@ -22,7 +23,7 @@ func loadConfig(path string) (*config, error) {
 		return nil, err
 	}
 
-	ServerConfig, err := setServerConfig()
+	ServerConfig, err := newServerConfig(&c)
 	if err != nil {
 		return nil, err
 	}
@@ -31,18 +32,16 @@ func loadConfig(path string) (*config, error) {
 	return &c, nil
 }
 
-func setServerConfig() (*ssh.ServerConfig, error) {
+func newServerConfig(c *config) (*ssh.ServerConfig, error) {
 	serverConfig := &ssh.ServerConfig{
 		// ToDo:
-		// PasswordCallback
-		// PublicKeyCallback
 		NoClientAuth: true,
 	}
+	
 	privateKeyBytes, err := ioutil.ReadFile("id_rsa")
 	if err != nil {
 		return nil, err
 	}
-
 	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
 	if err != nil {
 		return nil, err

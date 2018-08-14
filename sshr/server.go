@@ -3,17 +3,14 @@ package sshr
 import (
 	"net"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh"
-	"strings"
 )
 
-type middlewareFunc func(*Context, string) error
-type middleware map[string]middlewareFunc
+type AuthenticationHook func(*Context, string) error
 
 type SSHServer struct {
-	listener   net.Listener
-	config     *config
-	middleware middleware
+	listener           net.Listener
+	config             *config
+	AuthenticationHook AuthenticationHook
 }
 
 func NewSSHServer(confFile string) (*SSHServer, error) {
@@ -21,70 +18,9 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := middleware{}
 	return &SSHServer{
-		config:     c,
-		middleware: m,
+		config:             c,
 	}, nil
-}
-
-func (server *SSHServer) Use(command string, m middlewareFunc) {
-	server.middleware[strings.ToUpper(command)] = m
-}
-
-func getUsername(sshConn *ssh.ServerConn) (string, error) {
-	return "tsurubee", nil
-}
-
-func getPassword(sshConn *ssh.ServerConn) (string, error) {
-	return "password", nil
-}
-
-func startSSHProxy(conn net.Conn, c *config) error {
-	sshConn, _, _, err := ssh.NewServerConn(conn, c.ServerConfig)
-	if err != nil {
-		return err
-	}
-	// Get username and password from SSH session
-	username, err := getUsername(sshConn)
-	password, err := getPassword(sshConn)
-	if err != nil {
-		return err
-	}
-
-	// client
-	context := newContext(c)
-	if err := FindUpstreamByUsername(context, username); err != nil {
-		return err
-	}
-	ClientConfig := &ssh.ClientConfig{
-		User: username,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(password),
-			//ssh.PublicKeys("keys"),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-
-	sshClient, err := ssh.Dial("tcp", context.UpstreamHost + ":22", ClientConfig)
-	if err != nil {
-		return err
-	}
-	defer sshClient.Close()
-
-	sess, err := sshClient.NewSession()
-	if err != nil {
-		return err
-	}
-	defer sess.Close()
-
-	//ToDo
-	// pty
-
-	//ToDo
-	//client <-> proxy <-> upstream
-	//dual-directional io.Copy
-	return nil
 }
 
 func (server *SSHServer) Listen() (err error) {
@@ -107,7 +43,7 @@ func (server *SSHServer) Serve() error {
 		}
 		logrus.Info("SSH Client connected ", "clientIp ", conn.RemoteAddr())
 
-		go startSSHProxy(conn, server.config)
+		// goroutine
 	}
 }
 

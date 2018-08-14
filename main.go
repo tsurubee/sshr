@@ -4,6 +4,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/Gurpartap/logrus-stack"
 	"github.com/tsurubee/sshr/sshr"
+	"errors"
 )
 
 func init() {
@@ -20,8 +21,17 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	sshServer.Use("findUpstream", sshr.FindUpstreamByUsername)
+	sshServer.AuthenticationHook = FindUpstreamByUsername
 	if err := sshServer.ListenAndServe(); err != nil {
 		logrus.Fatal(err)
+	}
+}
+
+func FindUpstreamByUsername(c *sshr.Context, username string) error {
+	if username == "tsurubee" {
+		c.UpstreamHost = "host-tsurubee"
+		return nil
+	} else {
+		return errors.New(username + "'s host is not found!")
 	}
 }
