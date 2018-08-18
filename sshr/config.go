@@ -6,14 +6,10 @@ import (
 	"io/ioutil"
 )
 
-const AuthTypePassword = "password"
-
 type config struct {
-	ListenAddr   string            `toml:"listen_addr"`
-	RemoteAddr   string            `toml:"remote_addr"`
-	AuthType     string            `toml:"auth_type"`
-	ServerConfig *ssh.ServerConfig
-	ClientConfig *ssh.ClientConfig
+	ListenAddr string `toml:"listen_addr"`
+	RemoteAddr string `toml:"remote_addr"`
+	AuthType   string `toml:"auth_type"`
 }
 
 func loadConfig(path string) (*config, error) {
@@ -25,28 +21,11 @@ func loadConfig(path string) (*config, error) {
 		return nil, err
 	}
 
-	ctx := newContext(&c)
-	ServerConfig, err := newServerConfig(&c, ctx)
-	if err != nil {
-		return nil, err
-	}
-	c.ServerConfig = ServerConfig
-
 	return &c, nil
 }
 
-func newServerConfig(c *config, ctx *Context) (*ssh.ServerConfig, error) {
+func newServerConfig() (*ssh.ServerConfig, error) {
 	serverConfig := &ssh.ServerConfig{}
-	serverConfig.SetDefaults()
-
-	if c.AuthType == AuthTypePassword {
-		serverConfig.PasswordCallback =
-			func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
-				ctx.Username = c.User()
-				ctx.Password = string(pass)
-				return nil, nil
-			}
-	}
 
 	privateKeyBytes, err := ioutil.ReadFile("id_rsa")
 	if err != nil {

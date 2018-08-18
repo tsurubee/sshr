@@ -9,3 +9,9 @@ services:
       - ../sshr:/go/src/github.com/tsurubee/sshr
     working_dir: /go/src/github.com/tsurubee/sshr
     command: make server
+    links:
+      - host-tsurubee:host-tsurubee
+
+  host-tsurubee:
+    image: kinogmt/centos-ssh
+    hostname: 'host-tsurubee'

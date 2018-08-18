@@ -3,14 +3,15 @@ package sshr
 import (
 	"net"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
 )
 
 type AuthenticationHook func(*Context, string) error
 
 type SSHServer struct {
-	listener           net.Listener
-	config             *config
-	AuthenticationHook AuthenticationHook
+	listener    net.Listener
+	config      *config
+	ProxyConfig *ssh.ProxyConfig
 }
 
 func NewSSHServer(confFile string) (*SSHServer, error) {
@@ -18,8 +19,15 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 	if err != nil {
 		return nil, err
 	}
+	proxy := &ssh.ProxyConfig{}
+	proxy.Config.SetDefaults()
+
+	serverConfig, err := newServerConfig()
+	proxy.ServerConfig = serverConfig
+
 	return &SSHServer{
-		config: c,
+		config:      c,
+		ProxyConfig: proxy,
 	}, nil
 }
 
@@ -44,7 +52,14 @@ func (server *SSHServer) Serve() error {
 		logrus.Info("SSH Client connected ", "clientIp ", conn.RemoteAddr())
 
 		go func() {
-			if err := NewSSHPipeConn(conn, server.config); err != nil {
+			p, err := ssh.NewSSHPiperConn(conn, server.ProxyConfig)
+			if err != nil {
+				logrus.Fatal(err)
+				return
+			}
+
+			if err = p.Wait(); err != nil {
+				logrus.Fatal(err)
 				return
 			}
 		}()

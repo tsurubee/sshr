@@ -21,17 +21,16 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	sshServer.AuthenticationHook = FindUpstreamByUsername
+	sshServer.ProxyConfig.FindUpstreamHook = FindUpstreamByUsername
 	if err := sshServer.ListenAndServe(); err != nil {
 		logrus.Fatal(err)
 	}
 }
 
-func FindUpstreamByUsername(c *sshr.Context, username string) error {
+func FindUpstreamByUsername(username string) (string, error) {
 	if username == "tsurubee" {
-		c.UpstreamHost = "host-tsurubee"
-		return nil
+		return "host-tsurubee", nil
 	} else {
-		return errors.New(username + "'s host is not found!")
+		return "", errors.New(username + "'s host is not found!")
 	}
 }
