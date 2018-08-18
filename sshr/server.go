@@ -6,8 +6,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type AuthenticationHook func(*Context, string) error
-
 type SSHServer struct {
 	listener    net.Listener
 	config      *config
@@ -21,6 +19,7 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 	}
 	proxy := &ssh.ProxyConfig{}
 	proxy.Config.SetDefaults()
+	proxy.DestinationPort = c.DestinationPort
 
 	serverConfig, err := newServerConfig()
 	proxy.ServerConfig = serverConfig
@@ -52,7 +51,7 @@ func (server *SSHServer) Serve() error {
 		logrus.Info("SSH Client connected ", "clientIp ", conn.RemoteAddr())
 
 		go func() {
-			p, err := ssh.NewSSHPiperConn(conn, server.ProxyConfig)
+			p, err := ssh.NewSSHProxyConn(conn, server.ProxyConfig)
 			if err != nil {
 				logrus.Fatal(err)
 				return

@@ -7,9 +7,10 @@ import (
 )
 
 type config struct {
-	ListenAddr string `toml:"listen_addr"`
-	RemoteAddr string `toml:"remote_addr"`
-	AuthType   string `toml:"auth_type"`
+	ListenAddr      string `toml:"listen_addr"`
+	RemoteAddr      string `toml:"remote_addr"`
+	AuthType        string `toml:"auth_type"`
+	DestinationPort string `toml:"destination_port"`
 }
 
 func loadConfig(path string) (*config, error) {
