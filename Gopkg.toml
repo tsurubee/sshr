@@ -40,6 +40,7 @@
 [[constraint]]
   branch = "master"
   name = "golang.org/x/crypto"
+  source = "https://github.com/tsurubee/crypto.git"
 
 [prune]
   go-tests = true
