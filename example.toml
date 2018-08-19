@@ -1,0 +1,3 @@
+remote_addr = "127.0.0.1:2222"
+auth_type   = "password"
+destination_port = "22"
