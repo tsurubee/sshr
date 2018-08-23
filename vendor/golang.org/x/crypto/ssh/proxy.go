@@ -43,13 +43,10 @@ type ProxyConfig struct {
 	ServerVersion    string
 }
 
-type upstream struct{ *connection }
-type downstream struct{ *connection }
-
 // PipedConn provides downstream and upstream connections across proxy servers.
 type PipedConn struct {
-	Upstream          *upstream
-	Downstream        *downstream
+	Upstream          *connection
+	Downstream        *connection
 	upstreamMsgHook   func(msg []byte) ([]byte, error)
 	downstreamMsgHook func(msg []byte) ([]byte, error)
 }
@@ -450,12 +447,12 @@ func (pipe *PipedConn) PipeAuth(initUserAuthMsg *userAuthRequestMsg, authPipe *A
 	}
 }
 
-func (u *upstream) sendAuthReq() error {
-	if err := u.transport.writePacket(Marshal(&serviceRequestMsg{serviceUserAuth})); err != nil {
+func (c *connection) sendAuthReq() error {
+	if err := c.transport.writePacket(Marshal(&serviceRequestMsg{serviceUserAuth})); err != nil {
 		return err
 	}
 
-	packet, err := u.transport.readPacket()
+	packet, err := c.transport.readPacket()
 	if err != nil {
 		return err
 	}
@@ -463,7 +460,7 @@ func (u *upstream) sendAuthReq() error {
 	return Unmarshal(packet, &serviceAccept)
 }
 
-func NewDownstream(c net.Conn, config *ServerConfig) (*downstream, error) {
+func NewDownstream(c net.Conn, config *ServerConfig) (*connection, error) {
 	fullConf := *config
 	fullConf.SetDefaults()
 
@@ -477,10 +474,10 @@ func NewDownstream(c net.Conn, config *ServerConfig) (*downstream, error) {
 		return nil, err
 	}
 
-	return &downstream{s}, nil
+	return s, nil
 }
 
-func NewUpstream(c net.Conn, addr string, config *ClientConfig) (*upstream, error) {
+func NewUpstream(c net.Conn, addr string, config *ClientConfig) (*connection, error) {
 	fullConf := *config
 	fullConf.SetDefaults()
 
@@ -493,13 +490,13 @@ func NewUpstream(c net.Conn, addr string, config *ClientConfig) (*upstream, erro
 		return nil, err
 	}
 
-	return &upstream{conn}, nil
+	return conn, nil
 }
 
-func (d *downstream) NextAuthMsg() (*userAuthRequestMsg, error) {
+func (c *connection) NextAuthMsg() (*userAuthRequestMsg, error) {
 	var userAuthReq userAuthRequestMsg
 
-	if packet, err := d.transport.readPacket(); err != nil {
+	if packet, err := c.transport.readPacket(); err != nil {
 		return nil, err
 	} else if err = Unmarshal(packet, &userAuthReq); err != nil {
 		return nil, err

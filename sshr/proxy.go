@@ -6,7 +6,6 @@ import (
 )
 
 func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn, err error) {
-
 	d, err := ssh.NewDownstream(conn, proxy.ServerConfig)
 	if err != nil {
 		return nil, err
