@@ -36,7 +36,7 @@ func (server *SSHServer) Listen() (err error) {
 		return err
 	}
 
-	logrus.Info("Start Listening...")
+	logrus.Info("Start Listening on ", server.listener.Addr())
 	return err
 }
 
