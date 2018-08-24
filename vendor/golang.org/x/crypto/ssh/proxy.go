@@ -39,6 +39,7 @@ type ProxyConfig struct {
 	ServerConfig     *ServerConfig
 	ClientConfig     *ClientConfig
 	FindUpstreamHook func(username string) (string, error)
+	Destination      string
 	DestinationPort  string
 	ServerVersion    string
 }
@@ -218,7 +219,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 }
 
 func (pipe *PipedConn) ack(key PublicKey) error {
-	okMsg := userAuthPubKeyOkMsg{
+	okMsg := userAuthPubKeyOkMsg {
 		Algo:   key.Type(),
 		PubKey: key.Marshal(),
 	}
