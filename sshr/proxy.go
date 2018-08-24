@@ -33,14 +33,12 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		return nil, err
 	}
 
-	mappedUser := username
 	authPipe := &ssh.AuthPipe{
-		User: mappedUser,
+		User: username,
 		UpstreamHostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	addr := upconn.RemoteAddr().String()
-
+	addr   := upconn.RemoteAddr().String()
 	u, err := ssh.NewUpstream(upconn, addr, &ssh.ClientConfig{
 		HostKeyCallback: authPipe.UpstreamHostKeyCallback,
 	})
