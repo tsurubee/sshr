@@ -164,7 +164,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 		f, ok := authMethod.(publicKeyCallback)
 
 		if !ok {
-			return nil, errors.New("sshpiper: publicKeyCallback type assertions failed")
+			return nil, errors.New("sshr: publicKeyCallback type assertions failed")
 		}
 
 		signers, err := f()
@@ -185,7 +185,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 		f, ok := authMethod.(passwordCallback)
 
 		if !ok {
-			return nil, errors.New("sshpiper: passwordCallback type assertions failed")
+			return nil, errors.New("sshr: passwordCallback type assertions failed")
 		}
 
 		pw, err := f()
