@@ -6,7 +6,7 @@ import (
 )
 
 func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn, err error) {
-	d, err := ssh.NewDownstream(conn, proxy.ServerConfig)
+	d, err := ssh.NewDownstreamConn(conn, proxy.ServerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 	}
 
 	addr   := upconn.RemoteAddr().String()
-	u, err := ssh.NewUpstream(upconn, addr, &ssh.ClientConfig{
+	u, err := ssh.NewUpstreamConn(upconn, addr, &ssh.ClientConfig{
 		HostKeyCallback: authPipe.UpstreamHostKeyCallback,
 	})
 	if err != nil {

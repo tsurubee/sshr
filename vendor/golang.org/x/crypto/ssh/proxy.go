@@ -461,24 +461,24 @@ func (c *connection) sendAuthReq() error {
 	return Unmarshal(packet, &serviceAccept)
 }
 
-func NewDownstream(c net.Conn, config *ServerConfig) (*connection, error) {
+func NewDownstreamConn(c net.Conn, config *ServerConfig) (*connection, error) {
 	fullConf := *config
 	fullConf.SetDefaults()
 
-	s := &connection{
+	conn := &connection{
 		sshConn: sshConn{conn: c},
 	}
 
-	_, err := s.serverHandshakeNoAuth(&fullConf)
+	_, err := conn.serverHandshakeNoAuth(&fullConf)
 	if err != nil {
 		c.Close()
 		return nil, err
 	}
-
-	return s, nil
+	
+	return conn, nil
 }
 
-func NewUpstream(c net.Conn, addr string, config *ClientConfig) (*connection, error) {
+func NewUpstreamConn(c net.Conn, addr string, config *ClientConfig) (*connection, error) {
 	fullConf := *config
 	fullConf.SetDefaults()
 
