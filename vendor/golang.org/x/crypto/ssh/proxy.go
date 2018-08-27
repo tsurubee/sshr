@@ -39,7 +39,7 @@ type ProxyConfig struct {
 	ServerConfig     *ServerConfig
 	ClientConfig     *ClientConfig
 	FindUpstreamHook func(username string) (string, error)
-	Destination      string
+	DestinationHost  string
 	DestinationPort  string
 	ServerVersion    string
 }

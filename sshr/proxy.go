@@ -26,9 +26,9 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 	if err != nil {
 		return nil, err
 	}
-	proxy.Destination = upstreamHost
+	proxy.DestinationHost = upstreamHost
 
-	upconn, err := net.Dial("tcp", upstreamHost + ":" + proxy.DestinationPort)
+	upconn, err := net.Dial("tcp", proxy.DestinationHost + ":" + proxy.DestinationPort)
 	if err != nil {
 		return nil, err
 	}
