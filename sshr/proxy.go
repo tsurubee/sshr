@@ -16,20 +16,19 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		}
 	}()
 
-	userAuthReq, err := d.NextAuthMsg()
+	userAuthReq, err := d.GetAuthRequestMsg()
 	if err != nil {
 		return nil, err
 	}
 
 	username := userAuthReq.User
-
-	upstream_host, err := proxy.FindUpstreamHook(username)
+	upstreamHost, err := proxy.FindUpstreamHook(username)
 	if err != nil {
 		return nil, err
 	}
-	proxy.Destination = upstream_host
+	proxy.Destination = upstreamHost
 
-	upconn, err := net.Dial("tcp", upstream_host + ":" + proxy.DestinationPort)
+	upconn, err := net.Dial("tcp", upstreamHost + ":" + proxy.DestinationPort)
 	if err != nil {
 		return nil, err
 	}

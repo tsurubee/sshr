@@ -461,7 +461,7 @@ func (c *connection) sendAuthReq() error {
 	return Unmarshal(packet, &serviceAccept)
 }
 
-func (c *connection) NextAuthMsg() (*userAuthRequestMsg, error) {
+func (c *connection) GetAuthRequestMsg() (*userAuthRequestMsg, error) {
 	var userAuthReq userAuthRequestMsg
 
 	if packet, err := c.transport.readPacket(); err != nil {
