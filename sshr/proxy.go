@@ -28,7 +28,7 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 	}
 	proxy.DestinationHost = upstreamHost
 
-	upconn, err := net.Dial("tcp", proxy.DestinationHost + ":" + proxy.DestinationPort)
+	upConn, err := net.Dial("tcp", proxy.DestinationHost + ":" + proxy.DestinationPort)
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +38,8 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		UpstreamHostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	addr   := upconn.RemoteAddr().String()
-	u, err := ssh.NewUpstreamConn(upconn, addr, &ssh.ClientConfig{
+	addr   := upConn.RemoteAddr().String()
+	u, err := ssh.NewUpstreamConn(upConn, addr, &ssh.ClientConfig{
 		HostKeyCallback: authPipe.UpstreamHostKeyCallback,
 	})
 	if err != nil {
