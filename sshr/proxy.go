@@ -16,12 +16,12 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		}
 	}()
 
-	userAuthReq, err := d.GetAuthRequestMsg()
+	authRequestMsg, err := d.GetAuthRequestMsg()
 	if err != nil {
 		return nil, err
 	}
 
-	username := userAuthReq.User
+	username := authRequestMsg.User
 	upstreamHost, err := proxy.FindUpstreamHook(username)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		Downstream: d,
 	}
 
-	if err = p.PipeAuth(userAuthReq, authPipe); err != nil {
+	if err = p.PipeAuth(authRequestMsg, authPipe); err != nil {
 		return nil, err
 	}
 
