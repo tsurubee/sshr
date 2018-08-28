@@ -55,7 +55,7 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		Downstream: d,
 	}
 
-	if err = p.ProxyAuth(authRequestMsg, authPipe); err != nil {
+	if err = p.ProxyAuthenticate(authRequestMsg, authPipe); err != nil {
 		return nil, err
 	}
 

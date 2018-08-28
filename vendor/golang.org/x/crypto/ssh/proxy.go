@@ -49,7 +49,7 @@ type ProxyConn struct {
 	Downstream *connection
 }
 
-func (p *ProxyConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
+func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
 
 	var authType = AuthPipeTypePassThrough
 	var authMethod AuthMethod
@@ -291,7 +291,7 @@ func (p *ProxyConn) pipeAuthSkipBanner(packet []byte) (bool, error) {
 	}
 }
 
-func (p *ProxyConn) ProxyAuth(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
+func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
 	err := p.Upstream.sendAuthReq()
 	if err != nil {
 		return err
@@ -300,7 +300,7 @@ func (p *ProxyConn) ProxyAuth(initUserAuthMsg *userAuthRequestMsg, authPipe *Aut
 	userAuthMsg := initUserAuthMsg
 
 	for {
-		userAuthMsg, err = p.processAuthMsg(userAuthMsg, authPipe)
+		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, authPipe)
 		if err != nil {
 			return err
 		}
