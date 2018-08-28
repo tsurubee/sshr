@@ -50,7 +50,6 @@ type ProxyConn struct {
 }
 
 func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
-
 	var authType = AuthPipeTypePassThrough
 	var authMethod AuthMethod
 	mappedUser := authPipe.User
@@ -145,9 +144,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 			return msg, nil
 		}
 	case "password":
-
 		f, ok := authMethod.(passwordCallback)
-
 		if !ok {
 			return nil, errors.New("sshr: passwordCallback type assertions failed")
 		}
@@ -292,15 +289,13 @@ func (p *ProxyConn) pipeAuthSkipBanner(packet []byte) (bool, error) {
 }
 
 func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
-	err := p.Upstream.sendAuthReq()
-	if err != nil {
+	if err := p.Upstream.sendAuthReq(); err != nil {
 		return err
 	}
 
 	userAuthMsg := initUserAuthMsg
-
 	for {
-		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, authPipe)
+		userAuthMsg, err := p.handleAuthMsg(userAuthMsg, authPipe)
 		if err != nil {
 			return err
 		}
@@ -393,18 +388,11 @@ func parsePublicKeyMsg(userAuthReq *userAuthRequestMsg) (PublicKey, bool, *Signa
 func piping(dst, src packetConn) error {
 	for {
 		p, err := src.readPacket()
-
 		if err != nil {
 			return err
 		}
 
-		if err != nil {
-			return err
-		}
-
-		err = dst.writePacket(p)
-
-		if err != nil {
+		if err = dst.writePacket(p); err != nil {
 			return err
 		}
 	}
