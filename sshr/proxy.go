@@ -50,14 +50,14 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		}
 	}()
 
-	p := &ssh.PipedConn{
+	p := &ssh.ProxyConn{
 		Upstream:   u,
 		Downstream: d,
 	}
 
-	if err = p.PipeAuth(authRequestMsg, authPipe); err != nil {
+	if err = p.ProxyAuth(authRequestMsg, authPipe); err != nil {
 		return nil, err
 	}
 
-	return &ssh.ProxyConn{PipedConn: p}, nil
+	return p, nil
 }

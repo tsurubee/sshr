@@ -44,48 +44,12 @@ type ProxyConfig struct {
 	ServerVersion    string
 }
 
-// PipedConn provides downstream and upstream connections across proxy servers.
-type PipedConn struct {
-	Upstream          *connection
-	Downstream        *connection
-	upstreamMsgHook   func(msg []byte) ([]byte, error)
-	downstreamMsgHook func(msg []byte) ([]byte, error)
-}
-
-// ProxyConn is a piped SSH connection, linking upstream ssh server and
-// downstream ssh client together.
 type ProxyConn struct {
-	*PipedConn
-	UpstreamMsgHook func(conn ConnMetadata, msg []byte) ([]byte, error)
-	DownstreamHook  func(conn ConnMetadata, msg []byte) ([]byte, error)
+	Upstream   *connection
+	Downstream *connection
 }
 
-func (p *ProxyConn) Wait() error {
-	p.PipedConn.upstreamMsgHook = func(msg []byte) ([]byte, error) {
-		if p.UpstreamMsgHook != nil {
-			return p.UpstreamMsgHook(p.Downstream, msg)
-		}
-
-		return msg, nil
-	}
-
-	p.PipedConn.downstreamMsgHook = func(msg []byte) ([]byte, error) {
-		if p.DownstreamHook != nil {
-			return p.DownstreamHook(p.Downstream, msg)
-		}
-
-		return msg, nil
-	}
-
-	return p.PipedConn.loop()
-}
-
-// Close the piped connection create by SSHPiper
-func (p *ProxyConn) Close() {
-	p.PipedConn.Close()
-}
-
-func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
+func (p *ProxyConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
 
 	var authType = AuthPipeTypePassThrough
 	var authMethod AuthMethod
@@ -102,7 +66,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 			return nil, err
 		}
 
-		authType, authMethod, err = authPipe.PublicKeyCallback(pipe.Downstream, downKey)
+		authType, authMethod, err = authPipe.PublicKeyCallback(p.Downstream, downKey)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +74,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 		if isQuery {
 			// reply for query msg
 			// skip query from upstream
-			err = pipe.ack(downKey)
+			err = p.ack(downKey)
 			if err != nil {
 				return nil, err
 			}
@@ -119,7 +83,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 			return nil, nil
 		}
 
-		ok, err := pipe.checkPublicKey(msg, downKey, sig)
+		ok, err := p.checkPublicKey(msg, downKey, sig)
 
 		if err != nil {
 			return nil, err
@@ -143,7 +107,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 		if !ok || len(payload) > 0 {
 			return nil, parseError(msgUserAuthRequest)
 		}
-		authType, authMethod, _ = authPipe.PasswordCallback(pipe.Downstream, password)
+		authType, authMethod, _ = authPipe.PasswordCallback(p.Downstream, password)
 
 	default:
 	}
@@ -174,7 +138,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 		}
 
 		for _, signer := range signers {
-			msg, err = pipe.signAgain(mappedUser, msg, signer)
+			msg, err = p.signAgain(mappedUser, msg, signer)
 			if err != nil {
 				return nil, err
 			}
@@ -218,20 +182,20 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 	return msg, nil
 }
 
-func (pipe *PipedConn) ack(key PublicKey) error {
+func (p *ProxyConn) ack(key PublicKey) error {
 	okMsg := userAuthPubKeyOkMsg {
 		Algo:   key.Type(),
 		PubKey: key.Marshal(),
 	}
 
-	return pipe.Downstream.transport.writePacket(Marshal(&okMsg))
+	return p.Downstream.transport.writePacket(Marshal(&okMsg))
 }
 
-func (pipe *PipedConn) checkPublicKey(msg *userAuthRequestMsg, pubkey PublicKey, sig *Signature) (bool, error) {
+func (p *ProxyConn) checkPublicKey(msg *userAuthRequestMsg, pubkey PublicKey, sig *Signature) (bool, error) {
 	if !isAcceptableAlgo(sig.Format) {
 		return false, fmt.Errorf("ssh: algorithm %q not accepted", sig.Format)
 	}
-	signedData := buildDataSignedForAuth(pipe.Downstream.transport.getSessionID(), *msg, []byte(pubkey.Type()), pubkey.Marshal())
+	signedData := buildDataSignedForAuth(p.Downstream.transport.getSessionID(), *msg, []byte(pubkey.Type()), pubkey.Marshal())
 
 	if err := pubkey.Verify(signedData, sig); err != nil {
 		return false, nil
@@ -240,9 +204,9 @@ func (pipe *PipedConn) checkPublicKey(msg *userAuthRequestMsg, pubkey PublicKey,
 	return true, nil
 }
 
-func (pipe *PipedConn) signAgain(user string, msg *userAuthRequestMsg, signer Signer) (*userAuthRequestMsg, error) {
-	rand      := pipe.Upstream.transport.config.Rand
-	session   := pipe.Upstream.transport.getSessionID()
+func (p *ProxyConn) signAgain(user string, msg *userAuthRequestMsg, signer Signer) (*userAuthRequestMsg, error) {
+	rand      := p.Upstream.transport.config.Rand
+	session   := p.Upstream.transport.getSessionID()
 	upKey     := signer.PublicKey()
 	upKeyData := upKey.Marshal()
 
@@ -273,6 +237,116 @@ func (pipe *PipedConn) signAgain(user string, msg *userAuthRequestMsg, signer Si
 	Unmarshal(Marshal(pubkeyMsg), msg)
 
 	return msg, nil
+}
+
+func (p *ProxyConn) Wait() error {
+	c := make(chan error)
+
+	go func() {
+		c <- piping(p.Upstream.transport, p.Downstream.transport)
+	}()
+
+	go func() {
+		c <- piping(p.Downstream.transport, p.Upstream.transport)
+	}()
+
+	defer p.Close()
+	return <-c
+}
+
+func (p *ProxyConn) Close() {
+	p.Upstream.transport.Close()
+	p.Downstream.transport.Close()
+}
+
+func (p *ProxyConn) pipeAuthSkipBanner(packet []byte) (bool, error) {
+	err := p.Upstream.transport.writePacket(packet)
+	if err != nil {
+		return false, err
+	}
+
+	for {
+		packet, err := p.Upstream.transport.readPacket()
+		if err != nil {
+			return false, err
+		}
+
+		msgType := packet[0]
+
+		if err = p.Downstream.transport.writePacket(packet); err != nil {
+			return false, err
+		}
+
+		switch msgType {
+		case msgUserAuthSuccess:
+			return true, nil
+		case msgUserAuthBanner:
+			// should read another packet from upstream
+			continue
+		case msgUserAuthFailure:
+		default:
+		}
+
+		return false, nil
+	}
+}
+
+func (p *ProxyConn) ProxyAuth(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
+	err := p.Upstream.sendAuthReq()
+	if err != nil {
+		return err
+	}
+
+	userAuthMsg := initUserAuthMsg
+
+	for {
+		userAuthMsg, err = p.processAuthMsg(userAuthMsg, authPipe)
+		if err != nil {
+			return err
+		}
+
+		if userAuthMsg != nil {
+			succ, err := p.pipeAuthSkipBanner(Marshal(userAuthMsg))
+			if err != nil {
+				return err
+			}
+			if succ {
+				return nil
+			}
+		}
+
+		var packet []byte
+
+		for {
+			// find next msg which need to be hooked
+			if packet, err = p.Downstream.transport.readPacket(); err != nil {
+				return err
+			}
+
+			// we can only handle auth req at the moment
+			if packet[0] == msgUserAuthRequest {
+				// should hook, deal with it
+				break
+			}
+
+			// pipe other auth msg
+			succ, err := p.pipeAuthSkipBanner(packet)
+			if err != nil {
+				return err
+			}
+			if succ {
+				return nil
+			}
+		}
+
+		var userAuthReq userAuthRequestMsg
+
+		if err = Unmarshal(packet, &userAuthReq); err != nil {
+			return err
+		}
+
+		userAuthMsg = &userAuthReq
+	}
 }
 
 func parsePublicKeyMsg(userAuthReq *userAuthRequestMsg) (PublicKey, bool, *Signature, error) {
@@ -316,15 +390,13 @@ func parsePublicKeyMsg(userAuthReq *userAuthRequestMsg) (PublicKey, bool, *Signa
 	return pubKey, isQuery, sig, nil
 }
 
-func piping(dst, src packetConn, hooker func(msg []byte) ([]byte, error)) error {
+func piping(dst, src packetConn) error {
 	for {
 		p, err := src.readPacket()
 
 		if err != nil {
 			return err
 		}
-
-		p, err = hooker(p)
 
 		if err != nil {
 			return err
@@ -336,145 +408,6 @@ func piping(dst, src packetConn, hooker func(msg []byte) ([]byte, error)) error 
 			return err
 		}
 	}
-}
-
-func (pipe *PipedConn) loop() error {
-	c := make(chan error)
-
-	go func() {
-		c <- piping(pipe.Upstream.transport, pipe.Downstream.transport, pipe.downstreamMsgHook)
-	}()
-
-	go func() {
-		c <- piping(pipe.Downstream.transport, pipe.Upstream.transport, pipe.upstreamMsgHook)
-	}()
-
-	defer pipe.Close()
-	return <-c
-}
-
-func (pipe *PipedConn) Close() {
-	pipe.Upstream.transport.Close()
-	pipe.Downstream.transport.Close()
-}
-
-func (pipe *PipedConn) pipeAuthSkipBanner(packet []byte) (bool, error) {
-	err := pipe.Upstream.transport.writePacket(packet)
-	if err != nil {
-		return false, err
-	}
-
-	for {
-		packet, err := pipe.Upstream.transport.readPacket()
-		if err != nil {
-			return false, err
-		}
-
-		msgType := packet[0]
-
-		if err = pipe.Downstream.transport.writePacket(packet); err != nil {
-			return false, err
-		}
-
-		switch msgType {
-		case msgUserAuthSuccess:
-			return true, nil
-		case msgUserAuthBanner:
-			// should read another packet from upstream
-			continue
-		case msgUserAuthFailure:
-		default:
-		}
-
-		return false, nil
-	}
-}
-
-func (pipe *PipedConn) PipeAuth(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
-	err := pipe.Upstream.sendAuthReq()
-	if err != nil {
-		return err
-	}
-
-	userAuthMsg := initUserAuthMsg
-
-	for {
-		userAuthMsg, err = pipe.processAuthMsg(userAuthMsg, authPipe)
-		if err != nil {
-			return err
-		}
-
-		if userAuthMsg != nil {
-			succ, err := pipe.pipeAuthSkipBanner(Marshal(userAuthMsg))
-			if err != nil {
-				return err
-			}
-			if succ {
-				return nil
-			}
-		}
-
-		var packet []byte
-
-		for {
-			// find next msg which need to be hooked
-			if packet, err = pipe.Downstream.transport.readPacket(); err != nil {
-				return err
-			}
-
-			// we can only handle auth req at the moment
-			if packet[0] == msgUserAuthRequest {
-				// should hook, deal with it
-				break
-			}
-
-			// pipe other auth msg
-			succ, err := pipe.pipeAuthSkipBanner(packet)
-			if err != nil {
-				return err
-			}
-			if succ {
-				return nil
-			}
-		}
-
-		var userAuthReq userAuthRequestMsg
-
-		if err = Unmarshal(packet, &userAuthReq); err != nil {
-			return err
-		}
-
-		userAuthMsg = &userAuthReq
-	}
-}
-
-func (c *connection) sendAuthReq() error {
-	if err := c.transport.writePacket(Marshal(&serviceRequestMsg{serviceUserAuth})); err != nil {
-		return err
-	}
-
-	packet, err := c.transport.readPacket()
-	if err != nil {
-		return err
-	}
-	var serviceAccept serviceAcceptMsg
-	return Unmarshal(packet, &serviceAccept)
-}
-
-func (c *connection) GetAuthRequestMsg() (*userAuthRequestMsg, error) {
-	var userAuthReq userAuthRequestMsg
-
-	if packet, err := c.transport.readPacket(); err != nil {
-		return nil, err
-	} else if err = Unmarshal(packet, &userAuthReq); err != nil {
-		return nil, err
-	}
-
-	if userAuthReq.Service != serviceSSH {
-		return nil, errors.New("ssh: client attempted to negotiate for unknown service: " + userAuthReq.Service)
-	}
-
-	return &userAuthReq, nil
 }
 
 func noneAuthMsg(user string) *userAuthRequestMsg {
@@ -516,6 +449,35 @@ func NewUpstreamConn(c net.Conn, config *ClientConfig) (*connection, error) {
 	}
 
 	return conn, nil
+}
+
+func (c *connection) sendAuthReq() error {
+	if err := c.transport.writePacket(Marshal(&serviceRequestMsg{serviceUserAuth})); err != nil {
+		return err
+	}
+
+	packet, err := c.transport.readPacket()
+	if err != nil {
+		return err
+	}
+	var serviceAccept serviceAcceptMsg
+	return Unmarshal(packet, &serviceAccept)
+}
+
+func (c *connection) GetAuthRequestMsg() (*userAuthRequestMsg, error) {
+	var userAuthReq userAuthRequestMsg
+
+	if packet, err := c.transport.readPacket(); err != nil {
+		return nil, err
+	} else if err = Unmarshal(packet, &userAuthReq); err != nil {
+		return nil, err
+	}
+
+	if userAuthReq.Service != serviceSSH {
+		return nil, errors.New("ssh: client attempted to negotiate for unknown service: " + userAuthReq.Service)
+	}
+
+	return &userAuthReq, nil
 }
 
 func (c *connection) clientHandshakeNoAuth(dialAddress string, config *ClientConfig) error {
