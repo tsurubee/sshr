@@ -502,7 +502,7 @@ func NewDownstreamConn(c net.Conn, config *ServerConfig) (*connection, error) {
 	return conn, nil
 }
 
-func NewUpstreamConn(c net.Conn, addr string, config *ClientConfig) (*connection, error) {
+func NewUpstreamConn(c net.Conn, config *ClientConfig) (*connection, error) {
 	fullConf := *config
 	fullConf.SetDefaults()
 
@@ -510,7 +510,7 @@ func NewUpstreamConn(c net.Conn, addr string, config *ClientConfig) (*connection
 		sshConn: sshConn{conn: c},
 	}
 
-	if err := conn.clientHandshakeNoAuth(addr, &fullConf); err != nil {
+	if err := conn.clientHandshakeNoAuth(c.RemoteAddr().String(), &fullConf); err != nil {
 		c.Close()
 		return nil, err
 	}

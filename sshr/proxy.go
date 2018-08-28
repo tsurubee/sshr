@@ -38,8 +38,7 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		UpstreamHostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	addr   := upConn.RemoteAddr().String()
-	u, err := ssh.NewUpstreamConn(upConn, addr, &ssh.ClientConfig{
+	u, err := ssh.NewUpstreamConn(upConn, &ssh.ClientConfig{
 		HostKeyCallback: authPipe.UpstreamHostKeyCallback,
 	})
 	if err != nil {
