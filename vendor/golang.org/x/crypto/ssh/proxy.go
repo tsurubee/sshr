@@ -311,23 +311,22 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 		var packet []byte
 
 		for {
-			// find next msg which need to be hooked
+			// Read next msg after a failure
 			if packet, err = p.Downstream.transport.readPacket(); err != nil {
 				return err
 			}
 
 			// we can only handle auth req at the moment
 			if packet[0] == msgUserAuthRequest {
-				// should hook, deal with it
 				break
 			}
 
 			// pipe other auth msg
-			succ, err := p.bridgeAuthNoBanner(packet)
+			isSuccess, err := p.bridgeAuthNoBanner(packet)
 			if err != nil {
 				return err
 			}
-			if succ {
+			if isSuccess {
 				return nil
 			}
 		}
