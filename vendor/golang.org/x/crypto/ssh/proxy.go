@@ -10,27 +10,27 @@ import (
 	"net"
 )
 
-type AuthPipeType int
+type AuthType int
 
 const (
-	// AuthPipeTypePassThrough does nothing but pass auth message to upstream
-	AuthPipeTypePassThrough AuthPipeType = iota
+	// AuthTypePassThrough does nothing but pass auth message to upstream
+	AuthTypePassThrough AuthType = iota
 
-	// AuthPipeTypeMap converts auth message to AuthMethod return by callback and pass it to upstream
-	AuthPipeTypeMap
+	// AuthTypeMap converts auth message to AuthMethod return by callback and pass it to upstream
+	AuthTypeMap
 
-	// AuthPipeTypeDiscard discards auth message, do not pass it to upstream
-	AuthPipeTypeDiscard
+	// AuthTypeDiscard discards auth message, do not pass it to upstream
+	AuthTypeDiscard
 
-	// AuthPipeTypeNone converts auth message to NoneAuth and pass it to upstream
-	AuthPipeTypeNone
+	// AuthTypeNone converts auth message to NoneAuth and pass it to upstream
+	AuthTypeNone
 )
 
 // AuthPipe contains the callbacks of auth msg mapping from downstream to upstream
 type AuthPipe struct {
 	User                    string
-	PasswordCallback        func(conn ConnMetadata, password []byte) (AuthPipeType, AuthMethod, error)
-	PublicKeyCallback       func(conn ConnMetadata, key PublicKey)   (AuthPipeType, AuthMethod, error)
+	PasswordCallback        func(conn ConnMetadata, password []byte) (AuthType, AuthMethod, error)
+	PublicKeyCallback       func(conn ConnMetadata, key PublicKey)   (AuthType, AuthMethod, error)
 	UpstreamHostKeyCallback HostKeyCallback
 }
 
@@ -50,7 +50,7 @@ type ProxyConn struct {
 }
 
 func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
-	var authType = AuthPipeTypePassThrough
+	var authType = AuthTypePassThrough
 	var authMethod AuthMethod
 	username := authPipe.User
 
@@ -112,13 +112,13 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 	}
 
 	switch authType {
-	case AuthPipeTypePassThrough:
+	case AuthTypePassThrough:
 		return msg, nil
-	case AuthPipeTypeDiscard:
+	case AuthTypeDiscard:
 		return nil, nil
-	case AuthPipeTypeNone:
+	case AuthTypeNone:
 		return noneAuthMsg(username), nil
-	case AuthPipeTypeMap:
+	case AuthTypeMap:
 	}
 
 	switch authMethod.method() {
