@@ -321,14 +321,7 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 				break
 			}
 
-			// pipe other auth msg
-			isSuccess, err := p.bridgeAuthNoBanner(packet)
-			if err != nil {
-				return err
-			}
-			if isSuccess {
-				return nil
-			}
+			return errors.New("auth request msg can be acceptable")
 		}
 
 		var userAuthReq userAuthRequestMsg
