@@ -289,13 +289,14 @@ func (p *ProxyConn) pipeAuthSkipBanner(packet []byte) (bool, error) {
 }
 
 func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
-	if err := p.Upstream.sendAuthReq(); err != nil {
+	err := p.Upstream.sendAuthReq()
+	if err != nil {
 		return err
 	}
 
 	userAuthMsg := initUserAuthMsg
 	for {
-		userAuthMsg, err := p.handleAuthMsg(userAuthMsg, authPipe)
+		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, authPipe)
 		if err != nil {
 			return err
 		}
@@ -392,7 +393,7 @@ func piping(dst, src packetConn) error {
 			return err
 		}
 
-		if err = dst.writePacket(p); err != nil {
+		if err := dst.writePacket(p); err != nil {
 			return err
 		}
 	}
