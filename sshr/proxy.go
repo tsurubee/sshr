@@ -6,7 +6,7 @@ import (
 )
 
 func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn, err error) {
-	d, err := ssh.NewDownstream(conn, proxy.ServerConfig)
+	d, err := ssh.NewDownstreamConn(conn, proxy.ServerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -16,20 +16,19 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		}
 	}()
 
-	userAuthReq, err := d.NextAuthMsg()
+	authRequestMsg, err := d.GetAuthRequestMsg()
 	if err != nil {
 		return nil, err
 	}
 
-	username := userAuthReq.User
-
-	upstream_host, err := proxy.FindUpstreamHook(username)
+	username := authRequestMsg.User
+	upstreamHost, err := proxy.FindUpstreamHook(username)
 	if err != nil {
 		return nil, err
 	}
-	proxy.Destination = upstream_host
+	proxy.DestinationHost = upstreamHost
 
-	upconn, err := net.Dial("tcp", upstream_host + ":" + proxy.DestinationPort)
+	upConn, err := net.Dial("tcp", proxy.DestinationHost + ":" + proxy.DestinationPort)
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +38,7 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		UpstreamHostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	addr   := upconn.RemoteAddr().String()
-	u, err := ssh.NewUpstream(upconn, addr, &ssh.ClientConfig{
+	u, err := ssh.NewUpstreamConn(upConn, &ssh.ClientConfig{
 		HostKeyCallback: authPipe.UpstreamHostKeyCallback,
 	})
 	if err != nil {
@@ -52,14 +50,14 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		}
 	}()
 
-	p := &ssh.PipedConn{
+	p := &ssh.ProxyConn{
 		Upstream:   u,
 		Downstream: d,
 	}
 
-	if err = p.PipeAuth(userAuthReq, authPipe); err != nil {
+	if err = p.ProxyAuthenticate(authRequestMsg, authPipe); err != nil {
 		return nil, err
 	}
 
-	return &ssh.ProxyConn{PipedConn: p}, nil
+	return p, nil
 }

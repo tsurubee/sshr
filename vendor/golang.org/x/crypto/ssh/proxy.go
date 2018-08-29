@@ -10,27 +10,27 @@ import (
 	"net"
 )
 
-type AuthPipeType int
+type AuthType int
 
 const (
-	// AuthPipeTypePassThrough does nothing but pass auth message to upstream
-	AuthPipeTypePassThrough AuthPipeType = iota
+	// AuthTypePassThrough does nothing but pass auth message to upstream
+	AuthTypePassThrough AuthType = iota
 
-	// AuthPipeTypeMap converts auth message to AuthMethod return by callback and pass it to upstream
-	AuthPipeTypeMap
+	// AuthTypeMap converts auth message to AuthMethod return by callback and pass it to upstream
+	AuthTypeMap
 
-	// AuthPipeTypeDiscard discards auth message, do not pass it to upstream
-	AuthPipeTypeDiscard
+	// AuthTypeDiscard discards auth message, do not pass it to upstream
+	AuthTypeDiscard
 
-	// AuthPipeTypeNone converts auth message to NoneAuth and pass it to upstream
-	AuthPipeTypeNone
+	// AuthTypeNone converts auth message to NoneAuth and pass it to upstream
+	AuthTypeNone
 )
 
 // AuthPipe contains the callbacks of auth msg mapping from downstream to upstream
 type AuthPipe struct {
 	User                    string
-	PasswordCallback        func(conn ConnMetadata, password []byte) (AuthPipeType, AuthMethod, error)
-	PublicKeyCallback       func(conn ConnMetadata, key PublicKey)   (AuthPipeType, AuthMethod, error)
+	PasswordCallback        func(conn ConnMetadata, password []byte) (AuthType, AuthMethod, error)
+	PublicKeyCallback       func(conn ConnMetadata, key PublicKey)   (AuthType, AuthMethod, error)
 	UpstreamHostKeyCallback HostKeyCallback
 }
 
@@ -39,57 +39,20 @@ type ProxyConfig struct {
 	ServerConfig     *ServerConfig
 	ClientConfig     *ClientConfig
 	FindUpstreamHook func(username string) (string, error)
-	Destination      string
+	DestinationHost  string
 	DestinationPort  string
 	ServerVersion    string
 }
 
-// PipedConn provides downstream and upstream connections across proxy servers.
-type PipedConn struct {
-	Upstream          *connection
-	Downstream        *connection
-	upstreamMsgHook   func(msg []byte) ([]byte, error)
-	downstreamMsgHook func(msg []byte) ([]byte, error)
-}
-
-// ProxyConn is a piped SSH connection, linking upstream ssh server and
-// downstream ssh client together.
 type ProxyConn struct {
-	*PipedConn
-	UpstreamMsgHook func(conn ConnMetadata, msg []byte) ([]byte, error)
-	DownstreamHook  func(conn ConnMetadata, msg []byte) ([]byte, error)
+	Upstream   *connection
+	Downstream *connection
 }
 
-func (p *ProxyConn) Wait() error {
-	p.PipedConn.upstreamMsgHook = func(msg []byte) ([]byte, error) {
-		if p.UpstreamMsgHook != nil {
-			return p.UpstreamMsgHook(p.Downstream, msg)
-		}
-
-		return msg, nil
-	}
-
-	p.PipedConn.downstreamMsgHook = func(msg []byte) ([]byte, error) {
-		if p.DownstreamHook != nil {
-			return p.DownstreamHook(p.Downstream, msg)
-		}
-
-		return msg, nil
-	}
-
-	return p.PipedConn.loop()
-}
-
-// Close the piped connection create by SSHPiper
-func (p *ProxyConn) Close() {
-	p.PipedConn.Close()
-}
-
-func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
-
-	var authType = AuthPipeTypePassThrough
+func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
+	var authType = AuthTypePassThrough
 	var authMethod AuthMethod
-	mappedUser := authPipe.User
+	username := authPipe.User
 
 	switch msg.Method {
 	case "publickey":
@@ -102,7 +65,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 			return nil, err
 		}
 
-		authType, authMethod, err = authPipe.PublicKeyCallback(pipe.Downstream, downKey)
+		authType, authMethod, err = authPipe.PublicKeyCallback(p.Downstream, downKey)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +73,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 		if isQuery {
 			// reply for query msg
 			// skip query from upstream
-			err = pipe.ack(downKey)
+			err = p.ack(downKey)
 			if err != nil {
 				return nil, err
 			}
@@ -119,14 +82,14 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 			return nil, nil
 		}
 
-		ok, err := pipe.checkPublicKey(msg, downKey, sig)
+		ok, err := p.checkPublicKey(msg, downKey, sig)
 
 		if err != nil {
 			return nil, err
 		}
 
 		if !ok {
-			return noneAuthMsg(mappedUser), nil
+			return noneAuthMsg(username), nil
 		}
 
 	case "password":
@@ -143,20 +106,19 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 		if !ok || len(payload) > 0 {
 			return nil, parseError(msgUserAuthRequest)
 		}
-		authType, authMethod, _ = authPipe.PasswordCallback(pipe.Downstream, password)
+		authType, authMethod, _ = authPipe.PasswordCallback(p.Downstream, password)
 
 	default:
 	}
 
 	switch authType {
-	case AuthPipeTypePassThrough:
-		msg.User = mappedUser
+	case AuthTypePassThrough:
 		return msg, nil
-	case AuthPipeTypeDiscard:
+	case AuthTypeDiscard:
 		return nil, nil
-	case AuthPipeTypeNone:
-		return noneAuthMsg(mappedUser), nil
-	case AuthPipeTypeMap:
+	case AuthTypeNone:
+		return noneAuthMsg(username), nil
+	case AuthTypeMap:
 	}
 
 	switch authMethod.method() {
@@ -174,16 +136,14 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 		}
 
 		for _, signer := range signers {
-			msg, err = pipe.signAgain(mappedUser, msg, signer)
+			msg, err = p.signAgain(username, msg, signer)
 			if err != nil {
 				return nil, err
 			}
 			return msg, nil
 		}
 	case "password":
-
 		f, ok := authMethod.(passwordCallback)
-
 		if !ok {
 			return nil, errors.New("sshr: passwordCallback type assertions failed")
 		}
@@ -202,7 +162,7 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 		}
 
 		Unmarshal(Marshal(passwordAuthMsg{
-			User:     mappedUser,
+			User:     username,
 			Service:  serviceSSH,
 			Method:   "password",
 			Reply:    false,
@@ -214,24 +174,23 @@ func (pipe *PipedConn) processAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPip
 	default:
 	}
 
-	msg.User = mappedUser
 	return msg, nil
 }
 
-func (pipe *PipedConn) ack(key PublicKey) error {
+func (p *ProxyConn) ack(key PublicKey) error {
 	okMsg := userAuthPubKeyOkMsg {
 		Algo:   key.Type(),
 		PubKey: key.Marshal(),
 	}
 
-	return pipe.Downstream.transport.writePacket(Marshal(&okMsg))
+	return p.Downstream.transport.writePacket(Marshal(&okMsg))
 }
 
-func (pipe *PipedConn) checkPublicKey(msg *userAuthRequestMsg, pubkey PublicKey, sig *Signature) (bool, error) {
+func (p *ProxyConn) checkPublicKey(msg *userAuthRequestMsg, pubkey PublicKey, sig *Signature) (bool, error) {
 	if !isAcceptableAlgo(sig.Format) {
 		return false, fmt.Errorf("ssh: algorithm %q not accepted", sig.Format)
 	}
-	signedData := buildDataSignedForAuth(pipe.Downstream.transport.getSessionID(), *msg, []byte(pubkey.Type()), pubkey.Marshal())
+	signedData := buildDataSignedForAuth(p.Downstream.transport.getSessionID(), *msg, []byte(pubkey.Type()), pubkey.Marshal())
 
 	if err := pubkey.Verify(signedData, sig); err != nil {
 		return false, nil
@@ -240,9 +199,9 @@ func (pipe *PipedConn) checkPublicKey(msg *userAuthRequestMsg, pubkey PublicKey,
 	return true, nil
 }
 
-func (pipe *PipedConn) signAgain(user string, msg *userAuthRequestMsg, signer Signer) (*userAuthRequestMsg, error) {
-	rand      := pipe.Upstream.transport.config.Rand
-	session   := pipe.Upstream.transport.getSessionID()
+func (p *ProxyConn) signAgain(user string, msg *userAuthRequestMsg, signer Signer) (*userAuthRequestMsg, error) {
+	rand      := p.Upstream.transport.config.Rand
+	session   := p.Upstream.transport.getSessionID()
 	upKey     := signer.PublicKey()
 	upKeyData := upKey.Marshal()
 
@@ -273,6 +232,106 @@ func (pipe *PipedConn) signAgain(user string, msg *userAuthRequestMsg, signer Si
 	Unmarshal(Marshal(pubkeyMsg), msg)
 
 	return msg, nil
+}
+
+func (p *ProxyConn) Wait() error {
+	c := make(chan error)
+
+	go func() {
+		c <- piping(p.Upstream.transport, p.Downstream.transport)
+	}()
+
+	go func() {
+		c <- piping(p.Downstream.transport, p.Upstream.transport)
+	}()
+
+	defer p.Close()
+	return <-c
+}
+
+func (p *ProxyConn) Close() {
+	p.Upstream.transport.Close()
+	p.Downstream.transport.Close()
+}
+
+func (p *ProxyConn) bridgeAuthNoBanner(packet []byte) (bool, error) {
+	err := p.Upstream.transport.writePacket(packet)
+	if err != nil {
+		return false, err
+	}
+
+	for {
+		packet, err := p.Upstream.transport.readPacket()
+		if err != nil {
+			return false, err
+		}
+
+		msgType := packet[0]
+
+		if err = p.Downstream.transport.writePacket(packet); err != nil {
+			return false, err
+		}
+
+		switch msgType {
+		case msgUserAuthSuccess:
+			return true, nil
+		case msgUserAuthBanner:
+			continue
+		case msgUserAuthFailure:
+		default:
+		}
+
+		return false, nil
+	}
+}
+
+func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
+	err := p.Upstream.sendAuthReq()
+	if err != nil {
+		return err
+	}
+
+	userAuthMsg := initUserAuthMsg
+	for {
+		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, authPipe)
+		if err != nil {
+			return err
+		}
+
+		if userAuthMsg != nil {
+			isSuccess, err := p.bridgeAuthNoBanner(Marshal(userAuthMsg))
+			if err != nil {
+				return err
+			}
+			if isSuccess {
+				return nil
+			}
+		}
+
+		var packet []byte
+
+		for {
+			// Read next msg after a failure
+			if packet, err = p.Downstream.transport.readPacket(); err != nil {
+				return err
+			}
+
+			// we can only handle auth req at the moment
+			if packet[0] == msgUserAuthRequest {
+				break
+			}
+
+			return errors.New("auth request msg can be acceptable")
+		}
+
+		var userAuthReq userAuthRequestMsg
+
+		if err = Unmarshal(packet, &userAuthReq); err != nil {
+			return err
+		}
+
+		userAuthMsg = &userAuthReq
+	}
 }
 
 func parsePublicKeyMsg(userAuthReq *userAuthRequestMsg) (PublicKey, bool, *Signature, error) {
@@ -316,136 +375,58 @@ func parsePublicKeyMsg(userAuthReq *userAuthRequestMsg) (PublicKey, bool, *Signa
 	return pubKey, isQuery, sig, nil
 }
 
-func piping(dst, src packetConn, hooker func(msg []byte) ([]byte, error)) error {
+func piping(dst, src packetConn) error {
 	for {
 		p, err := src.readPacket()
-
 		if err != nil {
 			return err
 		}
 
-		p, err = hooker(p)
-
-		if err != nil {
-			return err
-		}
-
-		err = dst.writePacket(p)
-
-		if err != nil {
+		if err := dst.writePacket(p); err != nil {
 			return err
 		}
 	}
 }
 
-func (pipe *PipedConn) loop() error {
-	c := make(chan error)
-
-	go func() {
-		c <- piping(pipe.Upstream.transport, pipe.Downstream.transport, pipe.downstreamMsgHook)
-	}()
-
-	go func() {
-		c <- piping(pipe.Downstream.transport, pipe.Upstream.transport, pipe.upstreamMsgHook)
-	}()
-
-	defer pipe.Close()
-	return <-c
+func noneAuthMsg(user string) *userAuthRequestMsg {
+	return &userAuthRequestMsg{
+		User:    user,
+		Service: serviceSSH,
+		Method:  "none",
+	}
 }
 
-func (pipe *PipedConn) Close() {
-	pipe.Upstream.transport.Close()
-	pipe.Downstream.transport.Close()
-}
+func NewDownstreamConn(c net.Conn, config *ServerConfig) (*connection, error) {
+	fullConf := *config
+	fullConf.SetDefaults()
 
-func (pipe *PipedConn) pipeAuthSkipBanner(packet []byte) (bool, error) {
-	err := pipe.Upstream.transport.writePacket(packet)
+	conn := &connection{
+		sshConn: sshConn{conn: c},
+	}
+
+	_, err := conn.serverHandshakeNoAuth(&fullConf)
 	if err != nil {
-		return false, err
+		c.Close()
+		return nil, err
 	}
 
-	for {
-		packet, err := pipe.Upstream.transport.readPacket()
-		if err != nil {
-			return false, err
-		}
-
-		msgType := packet[0]
-
-		if err = pipe.Downstream.transport.writePacket(packet); err != nil {
-			return false, err
-		}
-
-		switch msgType {
-		case msgUserAuthSuccess:
-			return true, nil
-		case msgUserAuthBanner:
-			// should read another packet from upstream
-			continue
-		case msgUserAuthFailure:
-		default:
-		}
-
-		return false, nil
-	}
+	return conn, nil
 }
 
-func (pipe *PipedConn) PipeAuth(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
-	err := pipe.Upstream.sendAuthReq()
-	if err != nil {
-		return err
+func NewUpstreamConn(c net.Conn, config *ClientConfig) (*connection, error) {
+	fullConf := *config
+	fullConf.SetDefaults()
+
+	conn := &connection{
+		sshConn: sshConn{conn: c},
 	}
 
-	userAuthMsg := initUserAuthMsg
-
-	for {
-		userAuthMsg, err = pipe.processAuthMsg(userAuthMsg, authPipe)
-		if err != nil {
-			return err
-		}
-
-		if userAuthMsg != nil {
-			succ, err := pipe.pipeAuthSkipBanner(Marshal(userAuthMsg))
-			if err != nil {
-				return err
-			}
-			if succ {
-				return nil
-			}
-		}
-
-		var packet []byte
-
-		for {
-			// find next msg which need to be hooked
-			if packet, err = pipe.Downstream.transport.readPacket(); err != nil {
-				return err
-			}
-
-			// we can only handle auth req at the moment
-			if packet[0] == msgUserAuthRequest {
-				// should hook, deal with it
-				break
-			}
-
-			// pipe other auth msg
-			succ, err := pipe.pipeAuthSkipBanner(packet)
-			if err != nil {
-				return err
-			}
-			if succ {
-				return nil
-			}
-		}
-
-		var userAuthReq userAuthRequestMsg
-
-		if err = Unmarshal(packet, &userAuthReq); err != nil {
-			return err
-		}
-
-		userAuthMsg = &userAuthReq
+	if err := conn.clientHandshakeNoAuth(c.RemoteAddr().String(), &fullConf); err != nil {
+		c.Close()
+		return nil, err
 	}
+
+	return conn, nil
 }
 
 func (c *connection) sendAuthReq() error {
@@ -461,40 +442,7 @@ func (c *connection) sendAuthReq() error {
 	return Unmarshal(packet, &serviceAccept)
 }
 
-func NewDownstream(c net.Conn, config *ServerConfig) (*connection, error) {
-	fullConf := *config
-	fullConf.SetDefaults()
-
-	s := &connection{
-		sshConn: sshConn{conn: c},
-	}
-
-	_, err := s.serverHandshakeNoAuth(&fullConf)
-	if err != nil {
-		c.Close()
-		return nil, err
-	}
-
-	return s, nil
-}
-
-func NewUpstream(c net.Conn, addr string, config *ClientConfig) (*connection, error) {
-	fullConf := *config
-	fullConf.SetDefaults()
-
-	conn := &connection{
-		sshConn: sshConn{conn: c},
-	}
-
-	if err := conn.clientHandshakeNoAuth(addr, &fullConf); err != nil {
-		c.Close()
-		return nil, err
-	}
-
-	return conn, nil
-}
-
-func (c *connection) NextAuthMsg() (*userAuthRequestMsg, error) {
+func (c *connection) GetAuthRequestMsg() (*userAuthRequestMsg, error) {
 	var userAuthReq userAuthRequestMsg
 
 	if packet, err := c.transport.readPacket(); err != nil {
@@ -508,14 +456,6 @@ func (c *connection) NextAuthMsg() (*userAuthRequestMsg, error) {
 	}
 
 	return &userAuthReq, nil
-}
-
-func noneAuthMsg(user string) *userAuthRequestMsg {
-	return &userAuthRequestMsg{
-		User:    user,
-		Service: serviceSSH,
-		Method:  "none",
-	}
 }
 
 func (c *connection) clientHandshakeNoAuth(dialAddress string, config *ClientConfig) error {
