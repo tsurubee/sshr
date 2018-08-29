@@ -52,7 +52,7 @@ type ProxyConn struct {
 func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
 	var authType = AuthPipeTypePassThrough
 	var authMethod AuthMethod
-	mappedUser := authPipe.User
+	username := authPipe.User
 
 	switch msg.Method {
 	case "publickey":
@@ -89,7 +89,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 		}
 
 		if !ok {
-			return noneAuthMsg(mappedUser), nil
+			return noneAuthMsg(username), nil
 		}
 
 	case "password":
@@ -113,12 +113,11 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 
 	switch authType {
 	case AuthPipeTypePassThrough:
-		msg.User = mappedUser
 		return msg, nil
 	case AuthPipeTypeDiscard:
 		return nil, nil
 	case AuthPipeTypeNone:
-		return noneAuthMsg(mappedUser), nil
+		return noneAuthMsg(username), nil
 	case AuthPipeTypeMap:
 	}
 
@@ -137,7 +136,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 		}
 
 		for _, signer := range signers {
-			msg, err = p.signAgain(mappedUser, msg, signer)
+			msg, err = p.signAgain(username, msg, signer)
 			if err != nil {
 				return nil, err
 			}
@@ -163,7 +162,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 		}
 
 		Unmarshal(Marshal(passwordAuthMsg{
-			User:     mappedUser,
+			User:     username,
 			Service:  serviceSSH,
 			Method:   "password",
 			Reply:    false,
@@ -174,8 +173,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 
 	default:
 	}
-
-	msg.User = mappedUser
+	
 	return msg, nil
 }
 
