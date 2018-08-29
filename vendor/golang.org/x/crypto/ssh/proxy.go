@@ -173,7 +173,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 
 	default:
 	}
-	
+
 	return msg, nil
 }
 
@@ -254,7 +254,7 @@ func (p *ProxyConn) Close() {
 	p.Downstream.transport.Close()
 }
 
-func (p *ProxyConn) pipeAuthSkipBanner(packet []byte) (bool, error) {
+func (p *ProxyConn) bridgeAuthNoBanner(packet []byte) (bool, error) {
 	err := p.Upstream.transport.writePacket(packet)
 	if err != nil {
 		return false, err
@@ -276,7 +276,6 @@ func (p *ProxyConn) pipeAuthSkipBanner(packet []byte) (bool, error) {
 		case msgUserAuthSuccess:
 			return true, nil
 		case msgUserAuthBanner:
-			// should read another packet from upstream
 			continue
 		case msgUserAuthFailure:
 		default:
@@ -300,11 +299,11 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 		}
 
 		if userAuthMsg != nil {
-			succ, err := p.pipeAuthSkipBanner(Marshal(userAuthMsg))
+			isSuccess, err := p.bridgeAuthNoBanner(Marshal(userAuthMsg))
 			if err != nil {
 				return err
 			}
-			if succ {
+			if isSuccess {
 				return nil
 			}
 		}
@@ -324,7 +323,7 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 			}
 
 			// pipe other auth msg
-			succ, err := p.pipeAuthSkipBanner(packet)
+			succ, err := p.bridgeAuthNoBanner(packet)
 			if err != nil {
 				return err
 			}
