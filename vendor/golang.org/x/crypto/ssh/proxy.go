@@ -26,8 +26,8 @@ const (
 	AuthTypeNone
 )
 
-// AuthPipe contains the callbacks of auth msg mapping from downstream to upstream
-type AuthPipe struct {
+// ProxyAuth contains the callbacks of auth msg mapping from downstream to upstream
+type ProxyAuth struct {
 	User                    string
 	PasswordCallback        func(conn ConnMetadata, password []byte) (AuthType, AuthMethod, error)
 	PublicKeyCallback       func(conn ConnMetadata, key PublicKey)   (AuthType, AuthMethod, error)
@@ -49,14 +49,14 @@ type ProxyConn struct {
 	Downstream *connection
 }
 
-func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
+func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyAuth) (*userAuthRequestMsg, error) {
 	var authType = AuthTypePassThrough
 	var authMethod AuthMethod
-	username := authPipe.User
+	username := proxyAuth.User
 
 	switch msg.Method {
 	case "publickey":
-		if authPipe.PublicKeyCallback == nil {
+		if proxyAuth.PublicKeyCallback == nil {
 			break
 		}
 
@@ -65,7 +65,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 			return nil, err
 		}
 
-		authType, authMethod, err = authPipe.PublicKeyCallback(p.Downstream, downKey)
+		authType, authMethod, err = proxyAuth.PublicKeyCallback(p.Downstream, downKey)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +93,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 		}
 
 	case "password":
-		if authPipe.PasswordCallback == nil {
+		if proxyAuth.PasswordCallback == nil {
 			break
 		}
 
@@ -106,7 +106,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 		if !ok || len(payload) > 0 {
 			return nil, parseError(msgUserAuthRequest)
 		}
-		authType, authMethod, _ = authPipe.PasswordCallback(p.Downstream, password)
+		authType, authMethod, _ = proxyAuth.PasswordCallback(p.Downstream, password)
 
 	default:
 	}
@@ -285,7 +285,7 @@ func (p *ProxyConn) checkbridgeAuthNoBanner(packet []byte) (bool, error) {
 	}
 }
 
-func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
+func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *ProxyAuth) error {
 	err := p.Upstream.sendAuthReq()
 	if err != nil {
 		return err
