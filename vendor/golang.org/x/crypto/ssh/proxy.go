@@ -316,7 +316,6 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 				return err
 			}
 
-			// we can only handle auth req at the moment
 			if packet[0] == msgUserAuthRequest {
 				break
 			}
