@@ -29,7 +29,6 @@ const (
 // ProxyAuth contains the callbacks of auth msg mapping from downstream to upstream
 type ProxyAuth struct {
 	User                    string
-	PasswordCallback        func(conn ConnMetadata, password []byte) (AuthType, AuthMethod, error)
 	PublicKeyCallback       func(conn ConnMetadata, key PublicKey)   (AuthType, AuthMethod, error)
 	UpstreamHostKeyCallback HostKeyCallback
 }
@@ -60,12 +59,12 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyAuth)
 			break
 		}
 
-		downKey, isQuery, sig, err := parsePublicKeyMsg(msg)
+		downStreamPublicKey, isQuery, sig, err := parsePublicKeyMsg(msg)
 		if err != nil {
 			return nil, err
 		}
 
-		authType, authMethod, err = proxyAuth.PublicKeyCallback(p.Downstream, downKey)
+		authType, authMethod, err = proxyAuth.PublicKeyCallback(p.Downstream, downStreamPublicKey)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +72,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyAuth)
 		if isQuery {
 			// reply for query msg
 			// skip query from upstream
-			err = p.ack(downKey)
+			err = p.ack(downStreamPublicKey)
 			if err != nil {
 				return nil, err
 			}
@@ -82,7 +81,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyAuth)
 			return nil, nil
 		}
 
-		ok, err := p.checkPublicKey(msg, downKey, sig)
+		ok, err := p.checkPublicKey(msg, downStreamPublicKey, sig)
 
 		if err != nil {
 			return nil, err
@@ -93,20 +92,10 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyAuth)
 		}
 
 	case "password":
-		if proxyAuth.PasswordCallback == nil {
-			break
-		}
-
-		payload := msg.Payload
-		if len(payload) < 1 || payload[0] != 0 {
-			return nil, parseError(msgUserAuthRequest)
-		}
-		payload = payload[1:]
-		password, payload, ok := parseString(payload)
-		if !ok || len(payload) > 0 {
-			return nil, parseError(msgUserAuthRequest)
-		}
-		authType, authMethod, _ = proxyAuth.PasswordCallback(p.Downstream, password)
+		// In the case of password authentication,
+		// since authentication is left up to the upstream server,
+		// it suffices to flow the packet as it is.
+		break
 
 	default:
 	}
@@ -142,34 +131,6 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyAuth)
 			}
 			return msg, nil
 		}
-	case "password":
-		f, ok := authMethod.(passwordCallback)
-		if !ok {
-			return nil, errors.New("sshr: passwordCallback type assertions failed")
-		}
-
-		pw, err := f()
-		if err != nil {
-			return nil, err
-		}
-
-		type passwordAuthMsg struct {
-			User     string `sshtype:"50"`
-			Service  string
-			Method   string
-			Reply    bool
-			Password string
-		}
-
-		Unmarshal(Marshal(passwordAuthMsg{
-			User:     username,
-			Service:  serviceSSH,
-			Method:   "password",
-			Reply:    false,
-			Password: pw,
-		}), msg)
-
-		return msg, nil
 
 	default:
 	}
