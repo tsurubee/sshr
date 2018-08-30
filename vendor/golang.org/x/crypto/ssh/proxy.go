@@ -254,7 +254,7 @@ func (p *ProxyConn) Close() {
 	p.Downstream.transport.Close()
 }
 
-func (p *ProxyConn) bridgeAuthNoBanner(packet []byte) (bool, error) {
+func (p *ProxyConn) checkbridgeAuthNoBanner(packet []byte) (bool, error) {
 	err := p.Upstream.transport.writePacket(packet)
 	if err != nil {
 		return false, err
@@ -299,7 +299,7 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 		}
 
 		if userAuthMsg != nil {
-			isSuccess, err := p.bridgeAuthNoBanner(Marshal(userAuthMsg))
+			isSuccess, err := p.checkbridgeAuthNoBanner(Marshal(userAuthMsg))
 			if err != nil {
 				return err
 			}
