@@ -8,30 +8,24 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"bytes"
+	"os"
+	"path"
+	"io/ioutil"
+)
+
+type userFile string
+
+var (
+	userAuthorizedKeysFile userFile = "authorized_keys"
+	userKeyFile            userFile = "id_rsa"
 )
 
 type AuthType int
 
-const (
-	// AuthTypePassThrough does nothing but pass auth message to upstream
-	AuthTypePassThrough AuthType = iota
-
-	// AuthTypeMap converts auth message to AuthMethod return by callback and pass it to upstream
-	AuthTypeMap
-
-	// AuthTypeDiscard discards auth message, do not pass it to upstream
-	AuthTypeDiscard
-
-	// AuthTypeNone converts auth message to NoneAuth and pass it to upstream
-	AuthTypeNone
-)
-
-// AuthPipe contains the callbacks of auth msg mapping from downstream to upstream
-type AuthPipe struct {
-	User                    string
-	PasswordCallback        func(conn ConnMetadata, password []byte) (AuthType, AuthMethod, error)
-	PublicKeyCallback       func(conn ConnMetadata, key PublicKey)   (AuthType, AuthMethod, error)
-	UpstreamHostKeyCallback HostKeyCallback
+type ProxyAuth struct {
+	User              string
+	PublicKeyCallback func(conn ConnMetadata, key PublicKey) (AuthMethod, error)
 }
 
 type ProxyConfig struct {
@@ -49,41 +43,40 @@ type ProxyConn struct {
 	Downstream *connection
 }
 
-func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (*userAuthRequestMsg, error) {
-	var authType = AuthTypePassThrough
-	var authMethod AuthMethod
-	username := authPipe.User
-
+func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyAuth) (*userAuthRequestMsg, error) {
+	username := proxyAuth.User
 	switch msg.Method {
 	case "publickey":
-		if authPipe.PublicKeyCallback == nil {
-			break
+		if proxyAuth.PublicKeyCallback == nil {
+			proxyAuth.PublicKeyCallback = func(c ConnMetadata, pubKey PublicKey) (AuthMethod, error) {
+				signer, err := mapPublicKey(c, pubKey)
+
+				if err != nil || signer == nil {
+					return nil, nil
+				}
+
+				return PublicKeys(signer), nil
+			}
 		}
 
-		downKey, isQuery, sig, err := parsePublicKeyMsg(msg)
-		if err != nil {
-			return nil, err
-		}
-
-		authType, authMethod, err = authPipe.PublicKeyCallback(p.Downstream, downKey)
+		downStreamPublicKey, isQuery, sig, err := parsePublicKeyMsg(msg)
 		if err != nil {
 			return nil, err
 		}
 
 		if isQuery {
-			// reply for query msg
-			// skip query from upstream
-			err = p.ack(downKey)
-			if err != nil {
+			if err := p.ack(downStreamPublicKey); err != nil {
 				return nil, err
 			}
-
-			// discard msg
 			return nil, nil
 		}
 
-		ok, err := p.checkPublicKey(msg, downKey, sig)
+		authMethod, err := proxyAuth.PublicKeyCallback(p.Downstream, downStreamPublicKey)
+		if err != nil {
+			return nil, err
+		}
 
+		ok, err := p.checkPublicKey(msg, downStreamPublicKey, sig)
 		if err != nil {
 			return nil, err
 		}
@@ -92,45 +85,12 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 			return noneAuthMsg(username), nil
 		}
 
-	case "password":
-		if authPipe.PasswordCallback == nil {
+		f, ok := authMethod.(publicKeyCallback)
+		if !ok {
 			break
 		}
 
-		payload := msg.Payload
-		if len(payload) < 1 || payload[0] != 0 {
-			return nil, parseError(msgUserAuthRequest)
-		}
-		payload = payload[1:]
-		password, payload, ok := parseString(payload)
-		if !ok || len(payload) > 0 {
-			return nil, parseError(msgUserAuthRequest)
-		}
-		authType, authMethod, _ = authPipe.PasswordCallback(p.Downstream, password)
-
-	default:
-	}
-
-	switch authType {
-	case AuthTypePassThrough:
-		return msg, nil
-	case AuthTypeDiscard:
-		return nil, nil
-	case AuthTypeNone:
-		return noneAuthMsg(username), nil
-	case AuthTypeMap:
-	}
-
-	switch authMethod.method() {
-	case "publickey":
-		f, ok := authMethod.(publicKeyCallback)
-
-		if !ok {
-			return nil, errors.New("sshr: publicKeyCallback type assertions failed")
-		}
-
 		signers, err := f()
-		// no mapped user change it to none or error occur
 		if err != nil || len(signers) == 0 {
 			return nil, err
 		}
@@ -142,39 +102,90 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, authPipe *AuthPipe) (
 			}
 			return msg, nil
 		}
+
 	case "password":
-		f, ok := authMethod.(passwordCallback)
-		if !ok {
-			return nil, errors.New("sshr: passwordCallback type assertions failed")
-		}
-
-		pw, err := f()
-		if err != nil {
-			return nil, err
-		}
-
-		type passwordAuthMsg struct {
-			User     string `sshtype:"50"`
-			Service  string
-			Method   string
-			Reply    bool
-			Password string
-		}
-
-		Unmarshal(Marshal(passwordAuthMsg{
-			User:     username,
-			Service:  serviceSSH,
-			Method:   "password",
-			Reply:    false,
-			Password: pw,
-		}), msg)
-
-		return msg, nil
+		// In the case of password authentication,
+		// since authentication is left up to the upstream server,
+		// it suffices to flow the packet as it is.
+		break
 
 	default:
 	}
 
 	return msg, nil
+}
+
+func mapPublicKey(conn ConnMetadata, key PublicKey) (signer Signer, err error) {
+	username := conn.User()
+	err = userAuthorizedKeysFile.checkPerm(username)
+	if err != nil {
+		return nil, err
+	}
+
+	keydata := key.Marshal()
+
+	var rest []byte
+	rest, err = userAuthorizedKeysFile.read(username)
+	if err != nil {
+		return nil, err
+	}
+
+	var authedPubkey PublicKey
+
+	for len(rest) > 0 {
+		authedPubkey, _, _, rest, err = ParseAuthorizedKey(rest)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if bytes.Equal(authedPubkey.Marshal(), keydata) {
+			err = userKeyFile.checkPerm(username)
+			if err != nil {
+				return nil, err
+			}
+
+			var privateBytes []byte
+			privateBytes, err = userKeyFile.read(username)
+			if err != nil {
+				return nil, err
+			}
+
+			var private Signer
+			private, err = ParsePrivateKey(privateBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			return private, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func (file userFile) checkPerm(user string) error {
+	filename := userSpecFile(user, string(file))
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+
+	if fi.Mode().Perm()&0077 != 0 {
+		return fmt.Errorf("%v's perm is too open", filename)
+	}
+
+	return nil
+}
+
+func userSpecFile(username, file string) string {
+	return path.Join("/home", username, "/.ssh", file)
 }
 
 func (p *ProxyConn) ack(key PublicKey) error {
@@ -184,6 +195,14 @@ func (p *ProxyConn) ack(key PublicKey) error {
 	}
 
 	return p.Downstream.transport.writePacket(Marshal(&okMsg))
+}
+
+func (file userFile) read(user string) ([]byte, error) {
+	return ioutil.ReadFile(userSpecFile(user, string(file)))
+}
+
+func (file userFile) realPath(user string) string {
+	return userSpecFile(user, string(file))
 }
 
 func (p *ProxyConn) checkPublicKey(msg *userAuthRequestMsg, pubkey PublicKey, sig *Signature) (bool, error) {
@@ -254,7 +273,7 @@ func (p *ProxyConn) Close() {
 	p.Downstream.transport.Close()
 }
 
-func (p *ProxyConn) bridgeAuthNoBanner(packet []byte) (bool, error) {
+func (p *ProxyConn) checkBridgeAuthNoBanner(packet []byte) (bool, error) {
 	err := p.Upstream.transport.writePacket(packet)
 	if err != nil {
 		return false, err
@@ -285,7 +304,7 @@ func (p *ProxyConn) bridgeAuthNoBanner(packet []byte) (bool, error) {
 	}
 }
 
-func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *AuthPipe) error {
+func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *ProxyAuth) error {
 	err := p.Upstream.sendAuthReq()
 	if err != nil {
 		return err
@@ -295,11 +314,12 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 	for {
 		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, authPipe)
 		if err != nil {
-			return err
+			fmt.Println(err)
+			//return err
 		}
 
 		if userAuthMsg != nil {
-			isSuccess, err := p.bridgeAuthNoBanner(Marshal(userAuthMsg))
+			isSuccess, err := p.checkBridgeAuthNoBanner(Marshal(userAuthMsg))
 			if err != nil {
 				return err
 			}
@@ -316,7 +336,6 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 				return err
 			}
 
-			// we can only handle auth req at the moment
 			if packet[0] == msgUserAuthRequest {
 				break
 			}
@@ -454,6 +473,7 @@ func (c *connection) GetAuthRequestMsg() (*userAuthRequestMsg, error) {
 	if userAuthReq.Service != serviceSSH {
 		return nil, errors.New("ssh: client attempted to negotiate for unknown service: " + userAuthReq.Service)
 	}
+	c.user = userAuthReq.User
 
 	return &userAuthReq, nil
 }
@@ -528,4 +548,3 @@ func (c *connection) serverHandshakeNoAuth(config *ServerConfig) (*Permissions, 
 
 	return nil, nil
 }
-
