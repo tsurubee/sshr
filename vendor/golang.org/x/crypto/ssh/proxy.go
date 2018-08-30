@@ -86,9 +86,8 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyAuth)
 		}
 
 		f, ok := authMethod.(publicKeyCallback)
-
 		if !ok {
-			return nil, errors.New("sshr: publicKeyCallback type assertions failed")
+			break
 		}
 
 		signers, err := f()
@@ -185,8 +184,8 @@ func (file userFile) checkPerm(user string) error {
 	return nil
 }
 
-func userSpecFile(user, file string) string {
-	return path.Join("/home", user, "/.ssh", file)
+func userSpecFile(username, file string) string {
+	return path.Join("/home", username, "/.ssh", file)
 }
 
 func (p *ProxyConn) ack(key PublicKey) error {
@@ -315,7 +314,8 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 	for {
 		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, authPipe)
 		if err != nil {
-			return err
+			fmt.Println(err)
+			//return err
 		}
 
 		if userAuthMsg != nil {
@@ -548,4 +548,3 @@ func (c *connection) serverHandshakeNoAuth(config *ServerConfig) (*Permissions, 
 
 	return nil, nil
 }
-
