@@ -13,5 +13,9 @@ services:
       - host-tsurubee:host-tsurubee
 
   host-tsurubee:
-    image: kinogmt/centos-ssh
+    build: ./docker/host-tsurubee
     hostname: 'host-tsurubee'
+
+  host-hoge:
+    build: ./docker/host-hoge
+    hostname: 'host-hoge'
