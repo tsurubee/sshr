@@ -30,6 +30,8 @@ func main() {
 func FindUpstreamByUsername(username string) (string, error) {
 	if username == "tsurubee" {
 		return "host-tsurubee", nil
+	} else if username == "hoge" {
+		return "host-hoge", nil
 	} else {
 		return "", errors.New(username + "'s host is not found!")
 	}
