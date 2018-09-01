@@ -23,19 +23,16 @@ var (
 
 type AuthType int
 
-type ProxyAuth struct {
-	User              string
-	PublicKeyCallback func(conn ConnMetadata, key PublicKey) (AuthMethod, error)
-}
-
 type ProxyConfig struct {
 	Config
-	ServerConfig     *ServerConfig
-	ClientConfig     *ClientConfig
-	FindUpstreamHook func(username string) (string, error)
-	DestinationHost  string
-	DestinationPort  string
-	ServerVersion    string
+	User              string
+	ServerConfig      *ServerConfig
+	ClientConfig      *ClientConfig
+	FindUpstreamHook  func(username string) (string, error)
+	PublicKeyCallback func(conn ConnMetadata, key PublicKey) (AuthMethod, error)
+	DestinationHost   string
+	DestinationPort   string
+	ServerVersion     string
 }
 
 type ProxyConn struct {
@@ -43,7 +40,7 @@ type ProxyConn struct {
 	Downstream *connection
 }
 
-func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyAuth) (*userAuthRequestMsg, error) {
+func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyConfig) (*userAuthRequestMsg, error) {
 	username := proxyAuth.User
 	switch msg.Method {
 	case "publickey":
@@ -304,7 +301,7 @@ func (p *ProxyConn) checkBridgeAuthNoBanner(packet []byte) (bool, error) {
 	}
 }
 
-func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *ProxyAuth) error {
+func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *ProxyConfig) error {
 	err := p.Upstream.sendAuthReq()
 	if err != nil {
 		return err
