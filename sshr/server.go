@@ -52,7 +52,7 @@ func (server *SSHServer) Serve() error {
 				return err
 			}
 		}
-		logrus.Info("SSH Client connected ", "clientIp ", conn.RemoteAddr())
+		logrus.Info("SSH Client connected. ", "ClientIP=", conn.RemoteAddr())
 
 		go func() {
 			p, err := NewSSHProxyConn(conn, server.ProxyConfig)
