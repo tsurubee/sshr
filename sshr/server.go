@@ -22,7 +22,7 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 	proxy.Config.SetDefaults()
 	proxy.DestinationPort = c.DestinationPort
 
-	serverConfig, err := newServerConfig()
+	serverConfig, err := newServerConfig(c)
 	if err != nil {
 		return nil, err
 	}

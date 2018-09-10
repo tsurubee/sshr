@@ -10,6 +10,7 @@ type config struct {
 	ListenAddr      string `toml:"listen_addr"`
 	RemoteAddr      string `toml:"remote_addr"`
 	DestinationPort string `toml:"destination_port"`
+	HostKeyPath     string `toml:"server_hostkey_path"`
 }
 
 func loadConfig(path string) (*config, error) {
@@ -24,10 +25,10 @@ func loadConfig(path string) (*config, error) {
 	return &c, nil
 }
 
-func newServerConfig() (*ssh.ServerConfig, error) {
+func newServerConfig(c *config) (*ssh.ServerConfig, error) {
 	serverConfig := &ssh.ServerConfig{}
 
-	privateKeyBytes, err := ioutil.ReadFile("id_rsa")
+	privateKeyBytes, err := ioutil.ReadFile(c.HostKeyPath)
 	if err != nil {
 		return nil, err
 	}
