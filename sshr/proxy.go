@@ -5,7 +5,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn, err error) {
+func newSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn, err error) {
 	d, err := ssh.NewDownstreamConn(conn, proxy.ServerConfig)
 	if err != nil {
 		return nil, err
