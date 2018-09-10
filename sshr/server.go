@@ -17,11 +17,15 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	proxy := &ssh.ProxyConfig{}
 	proxy.Config.SetDefaults()
 	proxy.DestinationPort = c.DestinationPort
 
 	serverConfig, err := newServerConfig()
+	if err != nil {
+		return nil, err
+	}
 	proxy.ServerConfig = serverConfig
 
 	return &SSHServer{
