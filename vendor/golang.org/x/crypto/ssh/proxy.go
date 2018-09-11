@@ -420,7 +420,7 @@ func NewDownstreamConn(c net.Conn, config *ServerConfig) (*connection, error) {
 		sshConn: sshConn{conn: c},
 	}
 
-	_, err := conn.serverHandshakeNoAuth(&fullConf)
+	_, err := conn.serverHandshakeWithNoAuth(&fullConf)
 	if err != nil {
 		c.Close()
 		return nil, err
@@ -437,7 +437,7 @@ func NewUpstreamConn(c net.Conn, config *ClientConfig) (*connection, error) {
 		sshConn: sshConn{conn: c},
 	}
 
-	if err := conn.clientHandshakeNoAuth(c.RemoteAddr().String(), &fullConf); err != nil {
+	if err := conn.clientHandshakeWithNoAuth(c.RemoteAddr().String(), &fullConf); err != nil {
 		c.Close()
 		return nil, err
 	}
@@ -475,7 +475,7 @@ func (c *connection) GetAuthRequestMsg() (*userAuthRequestMsg, error) {
 	return &userAuthReq, nil
 }
 
-func (c *connection) clientHandshakeNoAuth(dialAddress string, config *ClientConfig) error {
+func (c *connection) clientHandshakeWithNoAuth(dialAddress string, config *ClientConfig) error {
 	c.clientVersion = []byte(packageVersion)
 	if config.ClientVersion != "" {
 		c.clientVersion = []byte(config.ClientVersion)
@@ -499,7 +499,7 @@ func (c *connection) clientHandshakeNoAuth(dialAddress string, config *ClientCon
 	return nil
 }
 
-func (c *connection) serverHandshakeNoAuth(config *ServerConfig) (*Permissions, error) {
+func (c *connection) serverHandshakeWithNoAuth(config *ServerConfig) (*Permissions, error) {
 	if len(config.hostKeys) == 0 {
 		return nil, errors.New("ssh: server has no host keys")
 	}
