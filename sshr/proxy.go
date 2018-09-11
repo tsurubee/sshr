@@ -5,13 +5,13 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func newSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn, err error) {
+func newSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (proxyConn *ssh.ProxyConn, err error) {
 	d, err := ssh.NewDownstreamConn(conn, proxy.ServerConfig)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-		if pipe == nil {
+		if proxyConn == nil {
 			d.Close()
 		}
 	}()
@@ -41,7 +41,7 @@ func newSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		return nil, err
 	}
 	defer func() {
-		if pipe == nil {
+		if proxyConn == nil {
 			u.Close()
 		}
 	}()
