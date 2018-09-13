@@ -5,13 +5,13 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn, err error) {
-	d, err := ssh.NewDownstreamConn(conn, proxy.ServerConfig)
+func newSSHProxyConn(conn net.Conn, proxyConf *ssh.ProxyConfig) (proxyConn *ssh.ProxyConn, err error) {
+	d, err := ssh.NewDownstreamConn(conn, proxyConf.ServerConfig)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-		if pipe == nil {
+		if proxyConn == nil {
 			d.Close()
 		}
 	}()
@@ -22,14 +22,14 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 	}
 
 	username := authRequestMsg.User
-	proxy.User = username
-	upstreamHost, err := proxy.FindUpstreamHook(username)
+	proxyConf.User = username
+	upstreamHost, err := proxyConf.FindUpstreamHook(username)
 	if err != nil {
 		return nil, err
 	}
-	proxy.DestinationHost = upstreamHost
+	proxyConf.DestinationHost = upstreamHost
 
-	upConn, err := net.Dial("tcp", proxy.DestinationHost + ":" + proxy.DestinationPort)
+	upConn, err := net.Dial("tcp", proxyConf.DestinationHost + ":" + proxyConf.DestinationPort)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		return nil, err
 	}
 	defer func() {
-		if pipe == nil {
+		if proxyConn == nil {
 			u.Close()
 		}
 	}()
@@ -51,7 +51,7 @@ func NewSSHProxyConn(conn net.Conn, proxy *ssh.ProxyConfig) (pipe *ssh.ProxyConn
 		Downstream: d,
 	}
 
-	if err = p.ProxyAuthenticate(authRequestMsg, proxy); err != nil {
+	if err = p.AuthenticateProxyConn(authRequestMsg, proxyConf); err != nil {
 		return nil, err
 	}
 

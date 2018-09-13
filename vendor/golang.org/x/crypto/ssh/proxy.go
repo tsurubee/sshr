@@ -18,7 +18,7 @@ type userFile string
 
 var (
 	userAuthorizedKeysFile userFile = "authorized_keys"
-	userKeyFile            userFile = "id_rsa"
+	userPrivateKeyFile     userFile = "id_rsa"
 )
 
 type AuthType int
@@ -40,13 +40,13 @@ type ProxyConn struct {
 	Downstream *connection
 }
 
-func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyConfig) (*userAuthRequestMsg, error) {
-	username := proxyAuth.User
+func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfig) (*userAuthRequestMsg, error) {
+	username := proxyConf.User
 	switch msg.Method {
 	case "publickey":
-		if proxyAuth.PublicKeyCallback == nil {
-			proxyAuth.PublicKeyCallback = func(c ConnMetadata, pubKey PublicKey) (AuthMethod, error) {
-				signer, err := mapPublicKey(c, pubKey)
+		if proxyConf.PublicKeyCallback == nil {
+			proxyConf.PublicKeyCallback = func(c ConnMetadata, publicKey PublicKey) (AuthMethod, error) {
+				signer, err := mapPublicKey(c, publicKey)
 
 				if err != nil || signer == nil {
 					return nil, nil
@@ -68,7 +68,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyAuth *ProxyConfi
 			return nil, nil
 		}
 
-		authMethod, err := proxyAuth.PublicKeyCallback(p.Downstream, downStreamPublicKey)
+		authMethod, err := proxyConf.PublicKeyCallback(p.Downstream, downStreamPublicKey)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +119,7 @@ func mapPublicKey(conn ConnMetadata, key PublicKey) (signer Signer, err error) {
 		return nil, err
 	}
 
-	keydata := key.Marshal()
+	keyData := key.Marshal()
 
 	var rest []byte
 	rest, err = userAuthorizedKeysFile.read(username)
@@ -127,23 +127,22 @@ func mapPublicKey(conn ConnMetadata, key PublicKey) (signer Signer, err error) {
 		return nil, err
 	}
 
-	var authedPubkey PublicKey
+	var authorizedPubkey PublicKey
 
 	for len(rest) > 0 {
-		authedPubkey, _, _, rest, err = ParseAuthorizedKey(rest)
-
+		authorizedPubkey, _, _, rest, err = ParseAuthorizedKey(rest)
 		if err != nil {
 			return nil, err
 		}
 
-		if bytes.Equal(authedPubkey.Marshal(), keydata) {
-			err = userKeyFile.checkPerm(username)
+		if bytes.Equal(authorizedPubkey.Marshal(), keyData) {
+			err = userPrivateKeyFile.checkPerm(username)
 			if err != nil {
 				return nil, err
 			}
 
 			var privateBytes []byte
-			privateBytes, err = userKeyFile.read(username)
+			privateBytes, err = userPrivateKeyFile.read(username)
 			if err != nil {
 				return nil, err
 			}
@@ -194,12 +193,8 @@ func (p *ProxyConn) ack(key PublicKey) error {
 	return p.Downstream.transport.writePacket(Marshal(&okMsg))
 }
 
-func (file userFile) read(user string) ([]byte, error) {
-	return ioutil.ReadFile(userSpecFile(user, string(file)))
-}
-
-func (file userFile) realPath(user string) string {
-	return userSpecFile(user, string(file))
+func (file userFile) read(username string) ([]byte, error) {
+	return ioutil.ReadFile(userSpecFile(username, string(file)))
 }
 
 func (p *ProxyConn) checkPublicKey(msg *userAuthRequestMsg, pubkey PublicKey, sig *Signature) (bool, error) {
@@ -301,7 +296,7 @@ func (p *ProxyConn) checkBridgeAuthNoBanner(packet []byte) (bool, error) {
 	}
 }
 
-func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authPipe *ProxyConfig) error {
+func (p *ProxyConn) AuthenticateProxyConn(initUserAuthMsg *userAuthRequestMsg, proxyConf *ProxyConfig) error {
 	err := p.Upstream.sendAuthReq()
 	if err != nil {
 		return err
@@ -309,7 +304,7 @@ func (p *ProxyConn) ProxyAuthenticate(initUserAuthMsg *userAuthRequestMsg, authP
 
 	userAuthMsg := initUserAuthMsg
 	for {
-		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, authPipe)
+		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, proxyConf)
 		if err != nil {
 			fmt.Println(err)
 			//return err
@@ -420,7 +415,7 @@ func NewDownstreamConn(c net.Conn, config *ServerConfig) (*connection, error) {
 		sshConn: sshConn{conn: c},
 	}
 
-	_, err := conn.serverHandshakeNoAuth(&fullConf)
+	_, err := conn.serverHandshakeWithNoAuth(&fullConf)
 	if err != nil {
 		c.Close()
 		return nil, err
@@ -437,7 +432,7 @@ func NewUpstreamConn(c net.Conn, config *ClientConfig) (*connection, error) {
 		sshConn: sshConn{conn: c},
 	}
 
-	if err := conn.clientHandshakeNoAuth(c.RemoteAddr().String(), &fullConf); err != nil {
+	if err := conn.clientHandshakeWithNoAuth(c.RemoteAddr().String(), &fullConf); err != nil {
 		c.Close()
 		return nil, err
 	}
@@ -475,7 +470,7 @@ func (c *connection) GetAuthRequestMsg() (*userAuthRequestMsg, error) {
 	return &userAuthReq, nil
 }
 
-func (c *connection) clientHandshakeNoAuth(dialAddress string, config *ClientConfig) error {
+func (c *connection) clientHandshakeWithNoAuth(dialAddress string, config *ClientConfig) error {
 	c.clientVersion = []byte(packageVersion)
 	if config.ClientVersion != "" {
 		c.clientVersion = []byte(config.ClientVersion)
@@ -499,7 +494,7 @@ func (c *connection) clientHandshakeNoAuth(dialAddress string, config *ClientCon
 	return nil
 }
 
-func (c *connection) serverHandshakeNoAuth(config *ServerConfig) (*Permissions, error) {
+func (c *connection) serverHandshakeWithNoAuth(config *ServerConfig) (*Permissions, error) {
 	if len(config.hostKeys) == 0 {
 		return nil, errors.New("ssh: server has no host keys")
 	}

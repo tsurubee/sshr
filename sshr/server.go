@@ -17,11 +17,15 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	proxy := &ssh.ProxyConfig{}
 	proxy.Config.SetDefaults()
 	proxy.DestinationPort = c.DestinationPort
 
-	serverConfig, err := newServerConfig()
+	serverConfig, err := newServerConfig(c)
+	if err != nil {
+		return nil, err
+	}
 	proxy.ServerConfig = serverConfig
 
 	return &SSHServer{
@@ -48,17 +52,17 @@ func (server *SSHServer) Serve() error {
 				return err
 			}
 		}
-		logrus.Info("SSH Client connected ", "clientIp ", conn.RemoteAddr())
+		logrus.Info("SSH Client connected. ", "ClientIP=", conn.RemoteAddr())
 
 		go func() {
-			p, err := NewSSHProxyConn(conn, server.ProxyConfig)
+			p, err := newSSHProxyConn(conn, server.ProxyConfig)
 			if err != nil {
-				logrus.Info(err)
+				logrus.Infof("Connection Error: %v", err)
 				return
 			}
-			logrus.Infof("Establish a connection between %v and %v across proxy", conn.RemoteAddr(), server.ProxyConfig.DestinationHost)
+			logrus.Infof("Establish a proxy connection between %v and %v", conn.RemoteAddr(), server.ProxyConfig.DestinationHost)
 			err = p.Wait()
-			logrus.Infof("Connection from %v closed reason: %v", conn.RemoteAddr(), err)
+			logrus.Infof("Connection from %v closed. %v", conn.RemoteAddr(), err)
 		}()
 	}
 }
