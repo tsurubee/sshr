@@ -303,9 +303,6 @@ func (p *ProxyConn) AuthenticateProxyConn(initUserAuthMsg *userAuthRequestMsg, p
 	}
 
 	userAuthMsg := initUserAuthMsg
-	if userAuthMsg.Service != serviceSSH {
-		return errors.New("ssh: client attempted to negotiate for unknown service: " + userAuthMsg.Service)
-	}
 	for {
 		userAuthMsg, err = p.handleAuthMsg(userAuthMsg, proxyConf)
 		if err != nil {
