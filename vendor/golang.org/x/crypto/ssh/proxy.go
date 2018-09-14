@@ -112,55 +112,64 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 	return msg, nil
 }
 
-func mapPublicKey(conn ConnMetadata, key PublicKey) (signer Signer, err error) {
-	username := conn.User()
-	err = userAuthorizedKeysFile.checkPerm(username)
+func checkAuthorizedKeys(username string, publicKey PublicKey) (bool, error) {
+	err := userAuthorizedKeysFile.checkPermission(username)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	keyData := key.Marshal()
-
-	var rest []byte
-	rest, err = userAuthorizedKeysFile.read(username)
+	publicKeyData := publicKey.Marshal()
+	var authKeys []byte
+	authKeys, err = userAuthorizedKeysFile.read(username)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
 	var authorizedPublicKey PublicKey
+	for len(authKeys) > 0 {
+		authorizedPublicKey, _, _, authKeys, err = ParseAuthorizedKey(authKeys)
+		if err != nil {
+			return false, err
+		}
 
-	for len(rest) > 0 {
-		authorizedPublicKey, _, _, rest, err = ParseAuthorizedKey(rest)
+		if bytes.Equal(authorizedPublicKey.Marshal(), publicKeyData) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func mapPublicKey(conn ConnMetadata, key PublicKey) (signer Signer, err error) {
+	username := conn.User()
+	perms, err := checkAuthorizedKeys(username, key)
+	if err != nil {
+		return nil, err
+	}
+
+	if perms {
+		err = userPrivateKeyFile.checkPermission(username)
 		if err != nil {
 			return nil, err
 		}
 
-		if bytes.Equal(authorizedPublicKey.Marshal(), keyData) {
-			err = userPrivateKeyFile.checkPerm(username)
-			if err != nil {
-				return nil, err
-			}
-
-			var privateBytes []byte
-			privateBytes, err = userPrivateKeyFile.read(username)
-			if err != nil {
-				return nil, err
-			}
-
-			var private Signer
-			private, err = ParsePrivateKey(privateBytes)
-			if err != nil {
-				return nil, err
-			}
-
-			return private, nil
+		var privateBytes []byte
+		privateBytes, err = userPrivateKeyFile.read(username)
+		if err != nil {
+			return nil, err
 		}
-	}
 
+		var private Signer
+		private, err = ParsePrivateKey(privateBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		return private, nil
+	}
 	return nil, nil
 }
 
-func (file userFile) checkPerm(user string) error {
+func (file userFile) checkPermission(user string) error {
 	filename := userSpecFile(user, string(file))
 	f, err := os.Open(filename)
 	if err != nil {
