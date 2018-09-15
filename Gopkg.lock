@@ -35,7 +35,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:10e5747cff5498eaa1a6b65575c993e066749bc5bdaeee3e46c919169b930247"
+  digest = "1:41895b06f746adb6dbf4d61218dcb8fe88f68908bda6d1f0f09a5ebee635b2a5"
   name = "golang.org/x/crypto"
   packages = [
     "curve25519",
@@ -48,19 +48,19 @@
     "ssh/terminal",
   ]
   pruneopts = "UT"
-  revision = "902b752a8dcb6caf8f9ce7e2a219d7c4bd2c9b52"
+  revision = "09a3eff0704f875685e9f10decf2c36ff65f954c"
   source = "https://github.com/tsurubee/crypto.git"
 
 [[projects]]
   branch = "master"
-  digest = "1:629034aef6b53eb8ea737e6d82cb5402907e2757fbab5ddf5e74c08b4c6473af"
+  digest = "1:374fc90fcb026e9a367e3fad29e988e5dd944b68ca3f24a184d77abc5307dda4"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "UT"
-  revision = "fa5fdf94c78965f1aa8423f0cc50b8b8d728b05a"
+  revision = "d0be0721c37eeb5299f245a996a483160fc36940"
 
 [solve-meta]
   analyzer-name = "dep"
