@@ -57,7 +57,7 @@ func (server *SSHServer) Serve() error {
 		go func() {
 			p, err := newSSHProxyConn(conn, server.ProxyConfig)
 			if err != nil {
-				logrus.Infof("Connection Error: %v", err)
+				logrus.Infof("Connection from %v closed. %v", conn.RemoteAddr(), err)
 				return
 			}
 			logrus.Infof("Establish a proxy connection between %v and %v", conn.RemoteAddr(), server.ProxyConfig.DestinationHost)
