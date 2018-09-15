@@ -25,14 +25,14 @@ type AuthType int
 
 type ProxyConfig struct {
 	Config
-	User              string
-	ServerConfig      *ServerConfig
-	ClientConfig      *ClientConfig
-	FindUpstreamHook  func(username string) (string, error)
-	PublicKeyCallback func(conn ConnMetadata, key PublicKey) (AuthMethod, error)
-	DestinationHost   string
-	DestinationPort   string
-	ServerVersion     string
+	User               string
+	ServerConfig       *ServerConfig
+	ClientConfig       *ClientConfig
+	FindUpstreamHook   func(username string) (string, error)
+	CheckPublicKeyHook func(username string, publicKey PublicKey) (bool, error)
+	DestinationHost    string
+	DestinationPort    string
+	ServerVersion      string
 }
 
 type ProxyConn struct {
@@ -44,16 +44,8 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 	username := proxyConf.User
 	switch msg.Method {
 	case "publickey":
-		if proxyConf.PublicKeyCallback == nil {
-			proxyConf.PublicKeyCallback = func(c ConnMetadata, publicKey PublicKey) (AuthMethod, error) {
-				signer, err := mapPublicKey(c, publicKey)
-
-				if err != nil || signer == nil {
-					return nil, nil
-				}
-
-				return PublicKeys(signer), nil
-			}
+		if proxyConf.CheckPublicKeyHook == nil {
+			proxyConf.CheckPublicKeyHook = checkPublicKeyFromAuthorizedKeys
 		}
 
 		downStreamPublicKey, isQuery, sig, err := parsePublicKeyMsg(msg)
@@ -68,20 +60,25 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 			return nil, nil
 		}
 
-		authMethod, err := proxyConf.PublicKeyCallback(p.Downstream, downStreamPublicKey)
-		if err != nil {
-			return nil, err
-		}
-		
-		ok, err := p.checkPublicKey(msg, downStreamPublicKey, sig)
-		if err != nil {
-			return nil, err
+		ok, err := proxyConf.CheckPublicKeyHook(username, downStreamPublicKey)
+		if err != nil || !ok {
+			return noneAuthMsg(username), nil
 		}
 
+		ok, err = p.VerifySignature(msg, downStreamPublicKey, sig)
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			return noneAuthMsg(username), nil
 		}
 
+		signer, err := newSigner(p.Downstream)
+		if err != nil || signer == nil {
+			return nil, err
+		}
+
+		authMethod := PublicKeys(signer)
 		f, ok := authMethod.(publicKeyCallback)
 		if !ok {
 			break
@@ -112,7 +109,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 	return msg, nil
 }
 
-func checkAuthorizedKeys(username string, publicKey PublicKey) (bool, error) {
+func checkPublicKeyFromAuthorizedKeys(username string, publicKey PublicKey) (bool, error) {
 	err := userAuthorizedKeysFile.checkPermission(username)
 	if err != nil {
 		return false, err
@@ -139,34 +136,26 @@ func checkAuthorizedKeys(username string, publicKey PublicKey) (bool, error) {
 	return false, nil
 }
 
-func mapPublicKey(conn ConnMetadata, key PublicKey) (signer Signer, err error) {
+func newSigner(conn ConnMetadata) (signer Signer, err error) {
 	username := conn.User()
-	perms, err := checkAuthorizedKeys(username, key)
+	err = userPrivateKeyFile.checkPermission(username)
 	if err != nil {
 		return nil, err
 	}
 
-	if perms {
-		err = userPrivateKeyFile.checkPermission(username)
-		if err != nil {
-			return nil, err
-		}
-
-		var privateBytes []byte
-		privateBytes, err = userPrivateKeyFile.read(username)
-		if err != nil {
-			return nil, err
-		}
-
-		var private Signer
-		private, err = ParsePrivateKey(privateBytes)
-		if err != nil {
-			return nil, err
-		}
-
-		return private, nil
+	var privateBytes []byte
+	privateBytes, err = userPrivateKeyFile.read(username)
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil
+
+	var private Signer
+	private, err = ParsePrivateKey(privateBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return private, nil
 }
 
 func (file userFile) checkPermission(user string) error {
@@ -206,7 +195,7 @@ func (file userFile) read(username string) ([]byte, error) {
 	return ioutil.ReadFile(userSpecFile(username, string(file)))
 }
 
-func (p *ProxyConn) checkPublicKey(msg *userAuthRequestMsg, publicKey PublicKey, sig *Signature) (bool, error) {
+func (p *ProxyConn) VerifySignature(msg *userAuthRequestMsg, publicKey PublicKey, sig *Signature) (bool, error) {
 	if !isAcceptableAlgo(sig.Format) {
 		return false, fmt.Errorf("ssh: algorithm %q not accepted", sig.Format)
 	}
