@@ -25,14 +25,18 @@ type AuthType int
 
 type ProxyConfig struct {
 	Config
-	User               string
-	ServerConfig       *ServerConfig
-	ClientConfig       *ClientConfig
-	FindUpstreamHook   func(username string) (string, error)
-	CheckPublicKeyHook func(username string, publicKey PublicKey) (bool, error)
-	DestinationHost    string
-	DestinationPort    string
-	ServerVersion      string
+	User                string
+	ServerConfig        *ServerConfig
+	ClientConfig        *ClientConfig
+	DestinationHost     string
+	DestinationPort     string
+	// Specify upstream host by SSH username
+	FindUpstreamHook    func(username string) (string, error)
+	// Confirm registration of client's public key. (authorized_keys file is usually used)
+	CheckPublicKeyHook  func(username string, publicKey PublicKey) (bool, error)
+	// Fetch the private key used when sshr performs public key authentication as a client user
+	// to the upstream host
+	FetchPrivateKeyHook func(username string) ([]byte, error)
 }
 
 type ProxyConn struct {
@@ -73,7 +77,15 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 			return noneAuthMsg(username), nil
 		}
 
-		signer, err := newSigner(p.Downstream)
+		if proxyConf.FetchPrivateKeyHook == nil {
+			proxyConf.FetchPrivateKeyHook = fetchPrivateKeyFromHomeDir
+		}
+		privateBytes, err := proxyConf.FetchPrivateKeyHook(username)
+		if err != nil {
+			return nil, err
+		}
+
+		signer, err := ParsePrivateKey(privateBytes)
 		if err != nil || signer == nil {
 			return nil, err
 		}
@@ -136,9 +148,8 @@ func checkPublicKeyFromAuthorizedKeys(username string, publicKey PublicKey) (boo
 	return false, nil
 }
 
-func newSigner(conn ConnMetadata) (signer Signer, err error) {
-	username := conn.User()
-	err = userPrivateKeyFile.checkPermission(username)
+func fetchPrivateKeyFromHomeDir(username string) ([]byte, error) {
+	err := userPrivateKeyFile.checkPermission(username)
 	if err != nil {
 		return nil, err
 	}
@@ -148,14 +159,7 @@ func newSigner(conn ConnMetadata) (signer Signer, err error) {
 	if err != nil {
 		return nil, err
 	}
-
-	var private Signer
-	private, err = ParsePrivateKey(privateBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return private, nil
+	return privateBytes, nil
 }
 
 func (file userFile) checkPermission(user string) error {
