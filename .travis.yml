@@ -1,13 +1,10 @@
 language: go
+sudo: required
 go:
   - "1.11.x"
   - master
 services:
   - docker
-sudo: required
-addons:
-  apt:
-    update: true
 before_install:
   - docker-compose up -d
   - sleep 20s
