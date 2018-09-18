@@ -8,6 +8,7 @@ services:
 before_install:
   - make depsdev
   - docker-compose up -d
-  - sleep 60s
+  - sleep 80s
 script:
+  - lsof -i:2222
   - make ci
