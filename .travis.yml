@@ -1,11 +1,11 @@
 language: go
-sudo: required
 go:
   - "1.11.x"
   - master
 services:
   - docker
 before_install:
+  - make depsdev
   - docker-compose up -d
   - sleep 20s
 script:
