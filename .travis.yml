@@ -2,5 +2,13 @@ language: go
 go:
   - "1.11.x"
   - master
+services:
+  - docker
+addons:
+  apt:
+    update: true
+before_install:
+  - docker-compose up -d
+  - sleep 20s
 script:
   - make ci
