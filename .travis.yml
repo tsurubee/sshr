@@ -4,6 +4,7 @@ go:
   - master
 services:
   - docker
+sudo: required
 addons:
   apt:
     update: true
