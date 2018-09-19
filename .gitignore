@@ -1,5 +1,3 @@
-id_rsa*
-
 # Only manage ssh package under vendor with Git
 vendor/*
 !/vendor/golang.org/
