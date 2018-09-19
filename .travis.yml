@@ -1,0 +1,12 @@
+sudo: required
+language: go
+go:
+  - "1.11.x"
+services:
+  - docker
+before_install:
+  - make depsdev
+  - docker-compose up -d
+  - sleep 30s
+script:
+  - make ci
