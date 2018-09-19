@@ -6,7 +6,7 @@ VERSION = $(shell cat version)
 REVISION = $(shell git describe --always)
 
 default: build
-ci: depsdev test integration vet lint
+ci: test integration vet lint
 
 deps: ## Install dependencies
 	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Installing Dependencies$(RESET)"
@@ -16,7 +16,7 @@ deps: ## Install dependencies
 depsdev: deps ## Installing dependencies for development
 	go get github.com/golang/lint/golint
 
-server: deps
+server: depsdev
 	go run main.go
 
 test: ## Run test
