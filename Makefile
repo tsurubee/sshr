@@ -6,7 +6,7 @@ VERSION = $(shell cat version)
 REVISION = $(shell git describe --always)
 
 default: build
-ci: test integration vet lint
+ci: depsdev test integration vet lint
 
 deps: ## Install dependencies
 	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Installing Dependencies$(RESET)"
