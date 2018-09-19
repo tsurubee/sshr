@@ -1,7 +1,6 @@
 language: go
-sudo: required
 go:
-  - "1.11.x"
+  - "1.10.x"
 services:
   - docker
 before_install:
@@ -9,5 +8,6 @@ before_install:
   - docker-compose up -d
   - docker-compose ps
   - sleep 60s
+  - ssh -vv tsurubee@127.0.0.1 -p 2222
 script:
   - make ci

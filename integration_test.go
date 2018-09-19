@@ -43,7 +43,7 @@ func TestLoginByPassword(t *testing.T) {
 	if !*integration {
 		t.Skip()
 	}
-	client, _, err := loginByPassword(22222, t)
+	client, _, err := loginByPassword(2222, t)
 	if err != nil {
 		t.Errorf("integration.TestLoginByPassword() error = %v, wantErr %v", err, nil)
 	}
