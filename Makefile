@@ -16,7 +16,7 @@ deps: ## Install dependencies
 depsdev: deps ## Installing dependencies for development
 	go get github.com/golang/lint/golint
 
-server: depsdev
+server: deps
 	go run main.go
 
 test: ## Run test
