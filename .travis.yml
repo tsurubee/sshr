@@ -8,5 +8,10 @@ before_install:
   - docker-compose up -d
   - docker-compose ps
   - sleep 60s
+  - docker ps
+  - ps aux
+  - lsof | grep 2222
+  - netstat -anp | grep "LISTEN"
+  - telnet 127.0.0.1 2222
 script:
   - make ci
