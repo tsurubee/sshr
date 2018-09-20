@@ -5,6 +5,7 @@ import (
 	"testing"
 	"os"
 	"fmt"
+	"io/ioutil"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -15,7 +16,37 @@ var (
 func loginByPassword(port int, t *testing.T) (*ssh.Client, *ssh.Session, error) {
 	sshConfig := &ssh.ClientConfig{
 		User: "tsurubee",
-		Auth: []ssh.AuthMethod{ssh.Password("test")},
+		Auth: []ssh.AuthMethod{ssh.Password("testpass")},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	client, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%d", port), sshConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		client.Close()
+		return nil, nil, err
+	}
+
+	return client, session, nil
+}
+
+func loginByPublicKey(port int, t *testing.T) (*ssh.Client, *ssh.Session, error) {
+	privateKeyBytes, err := ioutil.ReadFile("misc/testdata/client_keys/id_rsa")
+	if err != nil {
+		return nil, nil, err
+	}
+	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sshConfig := &ssh.ClientConfig{
+		User: "tsurubee",
+		Auth: []ssh.AuthMethod{ssh.PublicKeys(privateKey)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
@@ -46,6 +77,17 @@ func TestLoginByPassword(t *testing.T) {
 	client, _, err := loginByPassword(2222, t)
 	if err != nil {
 		t.Errorf("integration.TestLoginByPassword() error = %v, wantErr %v", err, nil)
+	}
+	defer client.Close()
+}
+
+func TestLoginByPublicKey(t *testing.T) {
+	if !*integration {
+		t.Skip()
+	}
+	client, _, err := loginByPublicKey(2222, t)
+	if err != nil {
+		t.Errorf("integration.TestLoginByPublicKey() error = %v, wantErr %v", err, nil)
 	}
 	defer client.Close()
 }
