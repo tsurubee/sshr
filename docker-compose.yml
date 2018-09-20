@@ -2,7 +2,10 @@ version: '3'
 
 services:
   ssh-proxy:
-    image: golang:latest
+    build:
+      context: ./
+      dockerfile: ./docker/ssh-proxy/Dockerfile
+    hostname: 'ssh-proxy'
     ports:
       - 2222:2222
     volumes:
@@ -11,11 +14,16 @@ services:
     command: make server
     links:
       - host-tsurubee:host-tsurubee
+      - host-hoge:host-hoge
 
   host-tsurubee:
-    build: ./docker/host-tsurubee
+    build:
+      context: ./
+      dockerfile: ./docker/host-tsurubee/Dockerfile
     hostname: 'host-tsurubee'
 
   host-hoge:
-    build: ./docker/host-hoge
+    build:
+      context: ./
+      dockerfile: ./docker/host-hoge/Dockerfile
     hostname: 'host-hoge'
