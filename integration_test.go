@@ -6,6 +6,7 @@ import (
 	"os"
 	"fmt"
 	"io/ioutil"
+	"time"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -18,6 +19,7 @@ func loginByPassword(port int, password string) (*ssh.Client, *ssh.Session, erro
 		User:            "tsurubee",
 		Auth:            []ssh.AuthMethod{ssh.Password(password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
 	}
 
 	client, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%d", port), sshConfig)
@@ -47,6 +49,7 @@ func loginByPublicKey(port int, keyPath string) (*ssh.Client, *ssh.Session, erro
 		User:            "tsurubee",
 		Auth:            []ssh.AuthMethod{ssh.PublicKeys(privateKey)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
 	}
 
 	client, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%d", port), sshConfig)
