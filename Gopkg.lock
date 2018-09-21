@@ -35,7 +35,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:1e00045fa52e070b0cf511de41b27a8fcd570753f271a17eacece3a1602a3e43"
+  digest = "1:c4e2757271979c0ba7af7dd274d30944c4ebc850da13b51bba3fb4933553f128"
   name = "golang.org/x/crypto"
   packages = [
     "curve25519",
@@ -48,7 +48,7 @@
     "ssh/terminal",
   ]
   pruneopts = "UT"
-  revision = "e8d49fc95ddcb352013011c6830369b798825e6e"
+  revision = "49d37e54693671bb5036cda43d9c4eaf06aae10c"
   source = "https://github.com/tsurubee/crypto.git"
 
 [[projects]]

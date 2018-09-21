@@ -121,14 +121,9 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 }
 
 func checkPublicKeyFromAuthorizedKeys(username string, publicKey PublicKey) (bool, error) {
-	err := userAuthorizedKeysFile.checkPermission(username)
-	if err != nil {
-		return false, err
-	}
-
 	publicKeyData := publicKey.Marshal()
 	var authKeys []byte
-	authKeys, err = userAuthorizedKeysFile.read(username)
+	authKeys, err := userAuthorizedKeysFile.read(username)
 	if err != nil {
 		return false, err
 	}
@@ -148,13 +143,8 @@ func checkPublicKeyFromAuthorizedKeys(username string, publicKey PublicKey) (boo
 }
 
 func fetchPrivateKeyFromHomeDir(username string) ([]byte, error) {
-	err := userPrivateKeyFile.checkPermission(username)
-	if err != nil {
-		return nil, err
-	}
-
 	var privateBytes []byte
-	privateBytes, err = userPrivateKeyFile.read(username)
+	privateBytes, err := userPrivateKeyFile.read(username)
 	if err != nil {
 		return nil, err
 	}
