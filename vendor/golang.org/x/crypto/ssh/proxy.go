@@ -51,10 +51,13 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 		if proxyConf.CheckPublicKeyHook == nil {
 			proxyConf.CheckPublicKeyHook = checkPublicKeyFromAuthorizedKeys
 		}
+		if proxyConf.FetchPrivateKeyHook == nil {
+			proxyConf.FetchPrivateKeyHook = fetchPrivateKeyFromHomeDir
+		}
 
 		downStreamPublicKey, isQuery, sig, err := parsePublicKeyMsg(msg)
 		if err != nil {
-			return nil, err
+			break
 		}
 
 		if isQuery {
@@ -66,28 +69,22 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 
 		ok, err := proxyConf.CheckPublicKeyHook(username, downStreamPublicKey)
 		if err != nil || !ok {
-			return noneAuthMsg(username), nil
+			break
 		}
 
 		ok, err = p.VerifySignature(msg, downStreamPublicKey, sig)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			return noneAuthMsg(username), nil
+		if err != nil || !ok {
+			break
 		}
 
-		if proxyConf.FetchPrivateKeyHook == nil {
-			proxyConf.FetchPrivateKeyHook = fetchPrivateKeyFromHomeDir
-		}
 		privateBytes, err := proxyConf.FetchPrivateKeyHook(username)
 		if err != nil {
-			return nil, err
+			break
 		}
 
 		signer, err := ParsePrivateKey(privateBytes)
 		if err != nil || signer == nil {
-			return nil, err
+			break
 		}
 
 		authMethod := PublicKeys(signer)
@@ -98,13 +95,13 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 
 		signers, err := f()
 		if err != nil || len(signers) == 0 {
-			return nil, err
+			break
 		}
 
 		for _, signer := range signers {
 			msg, err = p.signAgain(username, msg, signer)
 			if err != nil {
-				return nil, err
+				break
 			}
 			return msg, nil
 		}
@@ -113,12 +110,14 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 		// In the case of password authentication,
 		// since authentication is left up to the upstream server,
 		// it suffices to flow the packet as it is.
-		break
+		return msg, nil
 
 	default:
+		return msg, nil
 	}
 
-	return msg, nil
+	err := p.sendFailureMsg(msg.Method)
+	return nil, err
 }
 
 func checkPublicKeyFromAuthorizedKeys(username string, publicKey PublicKey) (bool, error) {
@@ -193,6 +192,13 @@ func (p *ProxyConn) sendOKMsg(key PublicKey) error {
 	}
 
 	return p.Downstream.transport.writePacket(Marshal(&okMsg))
+}
+
+func (p *ProxyConn) sendFailureMsg(method string) error {
+	var failureMsg userAuthFailureMsg
+	failureMsg.Methods = append(failureMsg.Methods, method)
+
+	return p.Downstream.transport.writePacket(Marshal(&failureMsg))
 }
 
 func (file userFile) read(username string) ([]byte, error) {
@@ -397,14 +403,6 @@ func piping(dst, src packetConn) error {
 		if err := dst.writePacket(p); err != nil {
 			return err
 		}
-	}
-}
-
-func noneAuthMsg(user string) *userAuthRequestMsg {
-	return &userAuthRequestMsg{
-		User:    user,
-		Service: serviceSSH,
-		Method:  "none",
 	}
 }
 
