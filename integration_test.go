@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"testing"
 	"os"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"path"
 	"time"
 	"strings"
 	"golang.org/x/crypto/ssh"
@@ -76,6 +79,31 @@ func execCommand(sess *ssh.Session, command string) (string, error) {
 	return strings.TrimRight(string(output), "\n"), nil
 }
 
+func uploadFileByScp(sess *ssh.Session, uploadFile string, permission string) error {
+	f, err := os.Open(uploadFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	filename := path.Base(uploadFile)
+
+	contentsBytes, err := ioutil.ReadAll(f)
+	if err != nil {
+		return err
+	}
+	r := bytes.NewReader(contentsBytes)
+
+	go func() {
+		w, _ := sess.StdinPipe()
+		defer w.Close()
+		fmt.Fprintln(w, "C"+permission, int64(len(contentsBytes)), filename)
+		io.Copy(w, r)
+		fmt.Fprint(w, "\x00")
+	}()
+
+	return sess.Run("scp -tr ./")
+}
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 	result := m.Run()
@@ -89,16 +117,19 @@ func TestLoginByPassword(t *testing.T) {
 
 	tests := []struct {
 		name     string
+		username string
 		password string
 		wantErr  bool
 	}{
 		{
 			name:     "success login",
+			username: "tsurubee",
 			password: "testpass",
 			wantErr:  false,
 		},
 		{
 			name:     "success login",
+			username: "tsurubee",
 			password: "failpass",
 			wantErr:   true,
 		},
@@ -106,7 +137,7 @@ func TestLoginByPassword(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, _, err := loginByPassword("tsurubee", 2222, tt.password)
+			client, _, err := loginByPassword(tt.username, 2222, tt.password)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("integration.TestLoginByPassword() error = %v, wantErr %v", err, nil)
 				return
@@ -203,3 +234,40 @@ func TestExecHostnameCommand(t *testing.T) {
 	}
 }
 
+func TestUploadFileByScp(t *testing.T) {
+	if !*integration {
+		t.Skip()
+	}
+
+	tests := []struct {
+		name       string
+		username   string
+		password   string
+		uploadFile string
+		wantErr    bool
+	}{
+		{
+			name:       "success upload",
+			username:   "tsurubee",
+			password:   "testpass",
+			uploadFile: "misc/testdata/uploadTest.txt",
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, sess, err := loginByPassword(tt.username, 2222, tt.password)
+			if err != nil != tt.wantErr {
+				t.Errorf("integration.TestUploadFileByScp() error = %v, wantErr %v", err, nil)
+				return
+			}
+
+			err = uploadFileByScp(sess, tt.uploadFile, "0644")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("integration.TestUploadFileByScp() error = %v, wantErr %v", err, nil)
+				return
+			}
+		})
+	}
+}
