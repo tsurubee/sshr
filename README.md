@@ -43,13 +43,10 @@ FindUpstreamHook is a hook that can be pluggable, which allows you to write your
 After Installation, test environment can be easily set up by using `docker-compose`.  
 ```
 $ docker-compose up
-Starting sshr_host-hoge_1     ... done
-Starting sshr_host-tsurubee_1 ... done
-Starting sshr_ssh-proxy_1     ... done
-Attaching to sshr_host-tsurubee_1, sshr_host-hoge_1, sshr_ssh-proxy_1
-host-tsurubee_1  | Starting crond: [  OK  ]
+・・・
 ssh-proxy_1      | ==> Installing Dependencies
 ssh-proxy_1      | go get -u github.com/golang/dep/...
+host-tsurubee_1  | Starting crond: [  OK  ]
 host-hoge_1      | Starting crond: [  OK  ]
 ssh-proxy_1      | dep ensure
 ssh-proxy_1      | go run main.go
@@ -61,8 +58,9 @@ $ ssh tsurubee@127.0.0.1 -p 2222
 tsurubee@127.0.0.1's password:
 [tsurubee@host-tsurubee ~]$
 ```
-We can also login with the public key authentication.  
+We can also login with the public key authentication.  (At the first time, we need to change permissions by `chmod`)
 ```
+$ chmod 600 ./misc/testdata/client_keys/id_rsa
 $ ssh -i ./misc/testdata/client_keys/id_rsa tsurubee@127.0.0.1 -p 2222
 Last login: Sat Sep 22 09:31:18 2018 from sshr_ssh-proxy_1.sshr_defaul
 [tsurubee@host-tsurubee ~]$ 
