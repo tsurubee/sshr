@@ -69,7 +69,7 @@ func (p *ProxyConn) handleAuthMsg(msg *userAuthRequestMsg, proxyConf *ProxyConfi
 
 		ok, err := proxyConf.CheckPublicKeyHook(username, downStreamPublicKey)
 		if err != nil || !ok {
-			break
+			return noneAuthMsg(username), nil
 		}
 
 		ok, err = p.VerifySignature(msg, downStreamPublicKey, sig)
@@ -393,6 +393,14 @@ func piping(dst, src packetConn) error {
 		if err := dst.writePacket(p); err != nil {
 			return err
 		}
+	}
+}
+
+func noneAuthMsg(user string) *userAuthRequestMsg {
+	return &userAuthRequestMsg{
+		User:    user,
+		Service: serviceSSH,
+		Method:  "none",
 	}
 }
 
