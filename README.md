@@ -69,27 +69,26 @@ Last login: Sat Sep 22 09:31:18 2018 from sshr_ssh-proxy_1.sshr_defaul
 ### Pluggable Hooks
 In order to be able to flexibly change the behavior of the proxy server, sshr can freely incorporate the following hooks.  
 
-#### FindUpstreamHook
-Required Hook
+#### FindUpstreamHook（Required）
+FindUpstreamHook is for specifying upstream host by SSH username.  
 ```
 Type: func(username string) (string, error)
 ```
-FindUpstreamHook is for specifying upstream host by SSH username.  
 
-
-#### CheckPublicKeyHook
-Optional Hook（If not specified, check publickey with `authorized_keys` in `/home/<username>/.ssh/`.）
+#### CheckPublicKeyHook（Optional）
+CheckPublicKeyHook is for confirming registration of client's public key.
 ```
 Type: func(username string, publicKey PublicKey) (bool, error)
 ```
-CheckPublicKeyHook is for confirming registration of client's public key.
+If not specified, check publickey with `authorized_keys` in `/home/<username>/.ssh/`.
 
-#### FetchPrivateKeyHook
-Optional Hook（If not specified, privatekey whose file path is `/home/<username>/.ssh/id_rsa` is used.）
+#### FetchPrivateKeyHook（Optional）
+FetchPrivateKeyHook is for fetching the private key used when sshr performs publickey authentication as a client user to the upstream host.  
+
 ```
 Type: func(username string) ([]byte, error)
 ```
-FetchPrivateKeyHook is for fetching the private key used when sshr performs publickey authentication as a client user to the upstream host.  
+If not specified, privatekey whose file path is `/home/<username>/.ssh/id_rsa` is used.  
 
 ## License
 
