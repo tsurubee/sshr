@@ -66,6 +66,31 @@ Last login: Sat Sep 22 09:31:18 2018 from sshr_ssh-proxy_1.sshr_defaul
 [tsurubee@host-tsurubee ~]$ 
 ```
 
+### Pluggable Hooks
+In order to be able to flexibly change the behavior of the proxy server, sshr can freely incorporate the following hooks.  
+
+#### FindUpstreamHook
+Required Hook
+```
+Type: func(username string) (string, error)
+```
+FindUpstreamHook is for specifying upstream host by SSH username.  
+
+
+#### CheckPublicKeyHook
+Optional Hook（If not specified, check publickey with `authorized_keys` in `/home/<username>/.ssh/`.）
+```
+Type: func(username string, publicKey PublicKey) (bool, error)
+```
+CheckPublicKeyHook is for confirming registration of client's public key.
+
+#### FetchPrivateKeyHook
+Optional Hook（If not specified, privatekey whose file path is `/home/<username>/.ssh/id_rsa` is used.）
+```
+Type: func(username string) ([]byte, error)
+```
+FetchPrivateKeyHook is for fetching the private key used when sshr performs publickey authentication as a client user to the upstream host.  
+
 ## License
 
 [MIT](https://github.com/tsurubee/sshr/blob/master/LICENSE)
