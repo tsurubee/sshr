@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:b16fbfbcc20645cb419f78325bb2e85ec729b338e996a228124d68931a6f2a37"
+  digest = "1:9f3b30d9f8e0d7040f729b82dcbc8f0dead820a133b3147ce355fc451f32d761"
   name = "github.com/BurntSushi/toml"
   packages = ["."]
   pruneopts = "UT"
-  revision = "b26d9c308763d68093482582cea63d69be07a0f0"
-  version = "v0.3.0"
+  revision = "3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005"
+  version = "v0.3.1"
 
 [[projects]]
   branch = "master"
@@ -35,7 +35,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:41895b06f746adb6dbf4d61218dcb8fe88f68908bda6d1f0f09a5ebee635b2a5"
+  digest = "1:c4e2757271979c0ba7af7dd274d30944c4ebc850da13b51bba3fb4933553f128"
   name = "golang.org/x/crypto"
   packages = [
     "curve25519",
@@ -48,19 +48,19 @@
     "ssh/terminal",
   ]
   pruneopts = "UT"
-  revision = "09a3eff0704f875685e9f10decf2c36ff65f954c"
+  revision = "49d37e54693671bb5036cda43d9c4eaf06aae10c"
   source = "https://github.com/tsurubee/crypto.git"
 
 [[projects]]
   branch = "master"
-  digest = "1:374fc90fcb026e9a367e3fad29e988e5dd944b68ca3f24a184d77abc5307dda4"
+  digest = "1:4d2869b8df54b3a687c426758d0891720e8bedfa6ff5d472671ce1d31d29bdfb"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "UT"
-  revision = "d0be0721c37eeb5299f245a996a483160fc36940"
+  revision = "d47a0f3392421c5624713c9a19fe781f651f8a50"
 
 [solve-meta]
   analyzer-name = "dep"
