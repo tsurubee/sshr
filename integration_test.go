@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"time"
+	"strings"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -14,9 +15,9 @@ var (
 	integration = flag.Bool("integration", false, "run integration tests")
 )
 
-func loginByPassword(port int, password string) (*ssh.Client, *ssh.Session, error) {
+func loginByPassword(username string, port int, password string) (*ssh.Client, *ssh.Session, error) {
 	sshConfig := &ssh.ClientConfig{
-		User:            "tsurubee",
+		User:            username,
 		Auth:            []ssh.AuthMethod{ssh.Password(password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         10 * time.Second,
@@ -35,7 +36,7 @@ func loginByPassword(port int, password string) (*ssh.Client, *ssh.Session, erro
 	return client, session, nil
 }
 
-func loginByPublicKey(port int, keyPath string) (*ssh.Client, *ssh.Session, error) {
+func loginByPublicKey(username string, port int, keyPath string) (*ssh.Client, *ssh.Session, error) {
 	privateKeyBytes, err := ioutil.ReadFile(keyPath)
 	if err != nil {
 		return nil, nil, err
@@ -46,7 +47,7 @@ func loginByPublicKey(port int, keyPath string) (*ssh.Client, *ssh.Session, erro
 	}
 
 	sshConfig := &ssh.ClientConfig{
-		User:            "tsurubee",
+		User:            username,
 		Auth:            []ssh.AuthMethod{ssh.PublicKeys(privateKey)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         10 * time.Second,
@@ -64,6 +65,15 @@ func loginByPublicKey(port int, keyPath string) (*ssh.Client, *ssh.Session, erro
 	}
 
 	return client, session, nil
+}
+
+func execCommand(sess *ssh.Session, command string) (string, error) {
+	output, err := sess.Output(command)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimRight(string(output), "\n"), nil
 }
 
 func TestMain(m *testing.M) {
@@ -96,7 +106,7 @@ func TestLoginByPassword(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, _, err := loginByPassword(2222, tt.password)
+			client, _, err := loginByPassword("tsurubee", 2222, tt.password)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("integration.TestLoginByPassword() error = %v, wantErr %v", err, nil)
 				return
@@ -132,7 +142,7 @@ func TestLoginByPublicKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, _, err := loginByPublicKey(2222, tt.keyPath)
+			client, _, err := loginByPublicKey("tsurubee", 2222, tt.keyPath)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("integration.TestLoginByPublicKey() error = %v, wantErr %v", err, nil)
 				return
@@ -143,3 +153,53 @@ func TestLoginByPublicKey(t *testing.T) {
 		})
 	}
 }
+
+func TestExecHostnameCommand(t *testing.T) {
+	if !*integration {
+		t.Skip()
+	}
+
+	tests := []struct {
+		name     string
+		username string
+		password string
+		hostname string
+		wantErr  bool
+	}{
+		{
+			name:     "Get Hostname:tsurubee",
+			username: "tsurubee",
+			password: "testpass",
+			hostname: "host-tsurubee",
+			wantErr:  false,
+		},
+		{
+			name:     "Get Hostname:hoge",
+			username: "hoge",
+			password: "testpass",
+			hostname: "host-hoge",
+			wantErr:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, sess, err := loginByPassword(tt.username, 2222, tt.password)
+			if err != nil != tt.wantErr {
+				t.Errorf("integration.TestExecHostnameCommand() error = %v, wantErr %v", err, nil)
+				return
+			}
+
+			hostname, err := execCommand(sess, "hostname")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("integration.TestExecHostnameCommand() error = %v, wantErr %v", err, nil)
+				return
+			}
+			if hostname != tt.hostname {
+				t.Errorf("integration.TestExecHostnameCommand() error = %v, wantErr %v", err, nil)
+				return
+			}
+		})
+	}
+}
+
