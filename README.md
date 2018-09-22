@@ -78,7 +78,7 @@ Type: func(username string) (string, error)
 #### CheckPublicKeyHook（Optional）
 CheckPublicKeyHook is for confirming registration of client's public key.
 ```
-Type: func(username string, publicKey PublicKey) (bool, error)
+Type: func(username string, publicKey ssh.PublicKey) (bool, error)
 ```
 If not specified, check publickey with `authorized_keys` in `/home/<username>/.ssh/`.
 
