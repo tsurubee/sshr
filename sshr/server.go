@@ -34,7 +34,7 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 	}, nil
 }
 
-func (server *SSHServer) Listen() (err error) {
+func (server *SSHServer) listen() (err error) {
 	server.listener, err = net.Listen("tcp", server.config.ListenAddr)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (server *SSHServer) Listen() (err error) {
 	return err
 }
 
-func (server *SSHServer) Serve() error {
+func (server *SSHServer) serve() error {
 	for {
 		conn, err := server.listener.Accept()
 		if err != nil {
@@ -68,9 +68,9 @@ func (server *SSHServer) Serve() error {
 }
 
 func (server *SSHServer) ListenAndServe() error {
-	if err := server.Listen(); err != nil {
+	if err := server.listen(); err != nil {
 		return err
 	}
 
-	return server.Serve()
+	return server.serve()
 }
