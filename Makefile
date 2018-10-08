@@ -19,6 +19,10 @@ depsdev: deps ## Installing dependencies for development
 server: deps
 	go run main.go
 
+build: ## Build as linux binary
+	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Building$(RESET)"
+	go build -o sshr_bin main.go
+
 test: ## Run test
 	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Testing$(RESET)"
 	go test -v $(TEST) -timeout=30s -parallel=4

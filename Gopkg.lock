@@ -26,6 +26,14 @@
   revision = "751773369052141c013c6e827a71e8f35c07879c"
 
 [[projects]]
+  branch = "master"
+  digest = "1:75a383eda1e4e76eb043bb67dcec98ee7d782ccf1fbb52bbc0cf3c5cb9825588"
+  name = "github.com/lestrrat/go-server-starter"
+  packages = ["listener"]
+  pruneopts = "UT"
+  revision = "6ac0b358431b798d3db8933ef547464e4ce74d9d"
+
+[[projects]]
   digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -53,6 +61,22 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:76ee51c3f468493aff39dbacc401e8831fbb765104cbf613b89bef01cf4bad70"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  pruneopts = "UT"
+  revision = "146acd28ed5894421fb5aac80ca93bc1b1f46f87"
+
+[[projects]]
+  branch = "master"
+  digest = "1:39ebcc2b11457b703ae9ee2e8cca0f68df21969c6102cb3b705f76cca0ea0239"
+  name = "golang.org/x/sync"
+  packages = ["errgroup"]
+  pruneopts = "UT"
+  revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
+
+[[projects]]
+  branch = "master"
   digest = "1:4d2869b8df54b3a687c426758d0891720e8bedfa6ff5d472671ce1d31d29bdfb"
   name = "golang.org/x/sys"
   packages = [
@@ -68,8 +92,10 @@
   input-imports = [
     "github.com/BurntSushi/toml",
     "github.com/Gurpartap/logrus-stack",
+    "github.com/lestrrat/go-server-starter/listener",
     "github.com/sirupsen/logrus",
     "golang.org/x/crypto/ssh",
+    "golang.org/x/sync/errgroup",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

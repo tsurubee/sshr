@@ -22,7 +22,7 @@ func main() {
 	}
 
 	sshServer.ProxyConfig.FindUpstreamHook = FindUpstreamByUsername
-	if err := sshServer.ListenAndServe(); err != nil {
+	if err := sshServer.Run(); err != nil {
 		logrus.Fatal(err)
 	}
 }

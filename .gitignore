@@ -1,3 +1,6 @@
+sshr_bin
+start_server
+
 # Only manage ssh package under vendor with Git
 vendor/*
 !/vendor/golang.org/
