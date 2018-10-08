@@ -2,14 +2,20 @@ package sshr
 
 import (
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
+	"golang.org/x/sync/errgroup"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
+	"github.com/lestrrat/go-server-starter/listener"
 )
 
 type SSHServer struct {
 	listener    net.Listener
 	config      *config
 	ProxyConfig *ssh.ProxyConfig
+	shutdown    bool
 }
 
 func NewSSHServer(confFile string) (*SSHServer, error) {
@@ -35,9 +41,17 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 }
 
 func (server *SSHServer) listen() (err error) {
-	server.listener, err = net.Listen("tcp", server.config.ListenAddr)
-	if err != nil {
-		return err
+	if os.Getenv("SERVER_STARTER_PORT") != "" {
+		listeners, err := listener.ListenAll()
+		if listeners == nil || err != nil {
+			return err
+		}
+		server.listener = listeners[0]
+	} else {
+		server.listener, err = net.Listen("tcp", server.config.ListenAddr)
+		if err != nil {
+			return err
+		}
 	}
 
 	logrus.Info("Start Listening on ", server.listener.Addr())
@@ -45,9 +59,16 @@ func (server *SSHServer) listen() (err error) {
 }
 
 func (server *SSHServer) serve() error {
+	eg := errgroup.Group{}
+
 	for {
 		conn, err := server.listener.Accept()
 		if err != nil {
+			if os.Getenv("SERVER_STARTER_PORT") != "" {
+				logrus.Info("Close listener")
+				break
+			}
+
 			if server.listener != nil {
 				return err
 			}
@@ -65,12 +86,50 @@ func (server *SSHServer) serve() error {
 			logrus.Infof("Connection from %v closed. %v", conn.RemoteAddr(), err)
 		}()
 	}
+
+	return eg.Wait()
 }
 
-func (server *SSHServer) ListenAndServe() error {
+func (server *SSHServer) Run() error {
+	var lastError error
+	done := make(chan struct{})
+
 	if err := server.listen(); err != nil {
 		return err
 	}
 
-	return server.serve()
+	go func() {
+		if err := server.serve(); err != nil {
+			if !server.shutdown {
+				lastError = err
+			}
+		}
+		done <- struct{}{}
+	}()
+
+	ch := make(chan os.Signal)
+	signal.Notify(ch, syscall.SIGHUP, syscall.SIGTERM)
+Loop:
+	for {
+		switch <-ch {
+		case syscall.SIGHUP, syscall.SIGTERM:
+			if err := server.stop(); err != nil {
+				lastError = err
+			}
+			break Loop
+		}
+	}
+
+	<-done
+	return lastError
+}
+
+func (server *SSHServer) stop() error {
+	server.shutdown = true
+	if server.listener != nil {
+		if err := server.listener.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
