@@ -26,12 +26,36 @@
   revision = "751773369052141c013c6e827a71e8f35c07879c"
 
 [[projects]]
+  digest = "1:9cedee824c21326bd26950bd9e1ffe9dc4e7ca03dc8634d0e6f954ee6a383172"
+  name = "github.com/kr/fs"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "1455def202f6e05b95cc7bfc7e8ae67ae5141eba"
+  version = "v0.1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:75a383eda1e4e76eb043bb67dcec98ee7d782ccf1fbb52bbc0cf3c5cb9825588"
   name = "github.com/lestrrat/go-server-starter"
   packages = ["listener"]
   pruneopts = "UT"
   revision = "6ac0b358431b798d3db8933ef547464e4ce74d9d"
+
+[[projects]]
+  digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
+  digest = "1:98c46dbde8c257608669d6827aacb8c8722d6ea7b4ffd7c4d1ea32ead21bfea9"
+  name = "github.com/pkg/sftp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "08de04f133f27844173471167014e1a753655ac8"
+  version = "v1.8.3"
 
 [[projects]]
   digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
@@ -93,6 +117,7 @@
     "github.com/BurntSushi/toml",
     "github.com/Gurpartap/logrus-stack",
     "github.com/lestrrat/go-server-starter/listener",
+    "github.com/pkg/sftp",
     "github.com/sirupsen/logrus",
     "golang.org/x/crypto/ssh",
     "golang.org/x/sync/errgroup",

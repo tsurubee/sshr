@@ -12,6 +12,7 @@ import (
 	"time"
 	"strings"
 	"golang.org/x/crypto/ssh"
+	"github.com/pkg/sftp"
 )
 
 var (
@@ -102,6 +103,45 @@ func uploadFileByScp(sess *ssh.Session, uploadFile string, permission string) er
 	}()
 
 	return sess.Run("scp -tr ./")
+}
+
+func uploadFileBySftp(username string, port int, password string, uploadFile string) error {
+	sshConfig := &ssh.ClientConfig{
+		User:            username,
+		Auth:            []ssh.AuthMethod{ssh.Password(password)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
+	}
+
+	conn, err := ssh.Dial("tcp", fmt.Sprintf("localhost:%d", port), sshConfig)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client, err := sftp.NewClient(conn)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	dstFile, err := client.Create(path.Base(uploadFile))
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	srcFile, err := os.Open(uploadFile)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func TestMain(m *testing.M) {
@@ -250,7 +290,7 @@ func TestUploadFileByScp(t *testing.T) {
 			name:       "success upload",
 			username:   "tsurubee",
 			password:   "testpass",
-			uploadFile: "misc/testdata/uploadTest.txt",
+			uploadFile: "misc/testdata/upload_test/uploadByScp.txt",
 			wantErr:    false,
 		},
 	}
@@ -264,6 +304,38 @@ func TestUploadFileByScp(t *testing.T) {
 			}
 
 			err = uploadFileByScp(sess, tt.uploadFile, "0644")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("integration.TestUploadFileByScp() error = %v, wantErr %v", err, nil)
+				return
+			}
+		})
+	}
+}
+
+func TestUploadFileBySftp(t *testing.T) {
+	if !*integration {
+		t.Skip()
+	}
+
+	tests := []struct {
+		name       string
+		username   string
+		password   string
+		uploadFile string
+		wantErr    bool
+	}{
+		{
+			name:       "success upload",
+			username:   "tsurubee",
+			password:   "testpass",
+			uploadFile: "misc/testdata/upload_test/uploadBySftp.txt",
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := uploadFileBySftp(tt.username, 2222, tt.password, tt.uploadFile)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("integration.TestUploadFileByScp() error = %v, wantErr %v", err, nil)
 				return
