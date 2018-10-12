@@ -15,6 +15,7 @@ deps: ## Install dependencies
 
 depsdev: deps ## Installing dependencies for development
 	go get golang.org/x/lint/golint
+	go get -u github.com/tcnksm/ghr
 
 server: deps
 	go run main.go
@@ -22,6 +23,13 @@ server: deps
 build: ## Build as linux binary
 	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Building$(RESET)"
 	go build -o sshr_bin main.go
+
+ghr: ## Upload to Github releases without token check
+	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Releasing for Github$(RESET)"
+	ghr -u tsurubee v$(VERSION)-$(REVISION) pkg
+
+dist: build ## Upload to Github releases
+	@test -z $(GITHUB_TOKEN) || test -z $(GITHUB_API) || $(MAKE) ghr
 
 test: ## Run test
 	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Testing$(RESET)"
