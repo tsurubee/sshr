@@ -1,12 +1,3 @@
 sshr_bin
 start_server
 
-# Only manage ssh package under vendor with Git
-vendor/*
-!/vendor/golang.org/
-/vendor/golang.org/*
-!/vendor/golang.org/x/
-/vendor/golang.org/x/*
-!/vendor/golang.org/x/crypto
-/vendor/golang.org/x/crypto/*
-!/vendor/golang.org/x/crypto/ssh
