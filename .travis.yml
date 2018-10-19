@@ -5,8 +5,7 @@ go:
 services:
   - docker
 before_install:
-  - make depsdev
   - docker-compose up -d
   - sleep 30s
 script:
-  - make ci
+  - GO="GO111MODULE=on go" make ci
