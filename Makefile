@@ -11,7 +11,7 @@ GO ?= GO111MODULE=on /usr/local/go/bin/go
 endif
 
 default: build
-ci: test integration vet lint
+ci: depsdev test integration vet lint
 
 depsdev: ## Installing dependencies for development
 	$(GO) get golang.org/x/lint/golint
