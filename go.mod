@@ -16,4 +16,4 @@ require (
 	golang.org/x/sys v0.0.0-20181019084534-8f1d3d21f81b // indirect
 )
 
-replace golang.org/x/crypto => github.com/tsurubee/sshr.crypto v0.0.0-20181019232016-e8c617118531
+replace golang.org/x/crypto => github.com/tsurubee/sshr.crypto v0.0.0-20181024103430-0f619613162c
