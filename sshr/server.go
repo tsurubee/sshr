@@ -27,6 +27,8 @@ func NewSSHServer(confFile string) (*SSHServer, error) {
 	proxy := &ssh.ProxyConfig{}
 	proxy.Config.SetDefaults()
 	proxy.DestinationPort = c.DestinationPort
+	proxy.UseMasterKey = c.UseMasterKey
+	proxy.MasterKeyPath = c.MasterKeyPath
 
 	serverConfig, err := newServerConfig(c)
 	if err != nil {

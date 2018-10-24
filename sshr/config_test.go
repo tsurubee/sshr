@@ -22,6 +22,12 @@ func TestLoadConfig(t *testing.T) {
 	if c.HostKeyPath != "misc/testdata/hostkey/id_rsa" {
 		t.Errorf("Config cannot parse HostKeyPath")
 	}
+	if c.UseMasterKey != true {
+		t.Errorf("Config cannot parse UseMasterKey")
+	}
+	if c.MasterKeyPath != "misc/testdata/sshr_keys/id_rsa" {
+		t.Errorf("Config cannot parse MasterKeyPath")
+	}
 }
 
 func TestNewServerConfig(t *testing.T) {
