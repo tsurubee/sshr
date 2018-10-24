@@ -11,6 +11,8 @@ type config struct {
 	RemoteAddr      string `toml:"remote_addr"`
 	DestinationPort string `toml:"destination_port"`
 	HostKeyPath     string `toml:"server_hostkey_path"`
+	UseMasterKey    bool   `toml:"use_master_key"`
+	MasterKeyPath   string `toml:"master_key_path"`
 }
 
 func loadConfig(path string) (*config, error) {
@@ -42,4 +44,5 @@ func newServerConfig(c *config) (*ssh.ServerConfig, error) {
 
 func defaultConfig(config *config) {
 	config.ListenAddr = "0.0.0.0:2222"
+	config.UseMasterKey = false
 }

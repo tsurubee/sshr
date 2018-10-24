@@ -1,3 +1,5 @@
 remote_addr = "127.0.0.1:2222"
 destination_port = "22"
 server_hostkey_path = "misc/testdata/hostkey/id_rsa"
+use_master_key = true
+master_key_path = "misc/testdata/sshr_keys/id_rsa"

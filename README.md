@@ -80,7 +80,7 @@ Type: func(username string) (string, error)
 #### FetchAuthorizedKeysHook（Optional）
 FetchAuthorizedKeysHook is for fetching authorized_keys to confirm registration of the client's public key.  
 ```
-Type: func(username string) ([]byte, error)
+Type: func(username string, host string) ([]byte, error)
 ```
 If not specified, `authorized_keys` is fetched from `/home/<username>/.ssh/`.  
 
