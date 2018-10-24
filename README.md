@@ -77,12 +77,12 @@ FindUpstreamHook is for specifying upstream host by SSH username.
 Type: func(username string) (string, error)
 ```
 
-#### CheckPublicKeyHook（Optional）
-CheckPublicKeyHook is for confirming registration of client's public key.
+#### FetchAuthorizedKeysHook（Optional）
+FetchAuthorizedKeysHook is for fetching authorized_keys to confirm registration of the client's public key.  
 ```
-Type: func(username string, publicKey ssh.PublicKey) (bool, error)
+Type: func(username string) ([]byte, error)
 ```
-If not specified, check publickey with `authorized_keys` in `/home/<username>/.ssh/`.
+If not specified, `authorized_keys` is fetched from `/home/<username>/.ssh/`.  
 
 #### FetchPrivateKeyHook（Optional）
 FetchPrivateKeyHook is for fetching the private key used when sshr performs publickey authentication as a client user to the upstream host.  
