@@ -10,10 +10,10 @@ require (
 	github.com/pkg/errors v0.8.0 // indirect
 	github.com/pkg/sftp v1.8.3
 	github.com/sirupsen/logrus v1.1.1
-	golang.org/x/crypto v0.0.0-20180904163835-0709b304e793
+	golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e
 	golang.org/x/net v0.0.0-20181011144130-49bb7cea24b1 // indirect
 	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f
 	golang.org/x/sys v0.0.0-20181019084534-8f1d3d21f81b // indirect
 )
 
-replace golang.org/x/crypto => github.com/tsurubee/sshr.crypto v0.0.0-20181024103430-0f619613162c
+replace golang.org/x/crypto => github.com/tsurubee/sshr.crypto v0.0.0-20181024115236-4d3069b05706
