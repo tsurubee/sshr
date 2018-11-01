@@ -23,8 +23,8 @@ github.com/sirupsen/logrus v1.1.1 h1:VzGj7lhU7KEB9e9gMpAV/v5XT2NVSvLJhJLCWbnkgXg
 github.com/sirupsen/logrus v1.1.1/go.mod h1:zrgwTnHtNr00buQ1vSptGe8m1f/BbgsPukg8qsT7A+A=
 github.com/stretchr/testify v1.2.2 h1:bSDNvY7ZPG5RlJ8otE/7V6gMiyenm9RtJ7IUVIAoJ1w=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
-github.com/tsurubee/sshr.crypto v0.0.0-20181024144327-1cfe2a9e0019 h1:Rz9nryBDfNh0OGf6lhrNBHh4t8rwwsD4iY+sLDR7ivU=
-github.com/tsurubee/sshr.crypto v0.0.0-20181024144327-1cfe2a9e0019/go.mod h1:qqKONY6qYrgPatZeX4/7O2pc0x+DBloScsR+VHvwKeg=
+github.com/tsurubee/sshr.crypto v0.0.0-20181101225729-a944237b3cab h1:2z+kygw4qUYPz+hzvqZKyvHe61T/f0EDbW0lTjaxdrw=
+github.com/tsurubee/sshr.crypto v0.0.0-20181101225729-a944237b3cab/go.mod h1:qqKONY6qYrgPatZeX4/7O2pc0x+DBloScsR+VHvwKeg=
 golang.org/x/net v0.0.0-20181011144130-49bb7cea24b1 h1:Y/KGZSOdz/2r0WJ9Mkmz6NJBusp0kiNx1Cn82lzJQ6w=
 golang.org/x/net v0.0.0-20181011144130-49bb7cea24b1/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f h1:wMNYb4v58l5UBM7MYRLPG6ZhfOqbKu7X5eyFl8ZhKvA=
