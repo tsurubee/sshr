@@ -2,6 +2,7 @@ package sshr
 
 import (
 	"testing"
+	"reflect"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -19,7 +20,7 @@ func TestLoadConfig(t *testing.T) {
 	if c.DestinationPort != "22" {
 		t.Errorf("Config cannot parse DestinationPort")
 	}
-	if c.HostKeyPath != "misc/testdata/hostkey/id_rsa" {
+	if !reflect.DeepEqual(c.HostKeyPath, []string{"misc/testdata/hostkey/id_rsa", "misc/testdata/hostkey/id_dsa"}) {
 		t.Errorf("Config cannot parse HostKeyPath")
 	}
 	if c.UseMasterKey != true {
@@ -35,7 +36,7 @@ func TestNewServerConfig(t *testing.T) {
 	if err != nil {
 		t.Errorf("Config load failed: %v", err)
 	}
-	c.HostKeyPath = "../misc/testdata/hostkey/id_rsa"
+	c.HostKeyPath = []string{"../misc/testdata/hostkey/id_rsa", "../misc/testdata/hostkey/id_dsa"}
 
 	serverConfig, err := newServerConfig(c)
 	if err != nil || serverConfig == nil {
