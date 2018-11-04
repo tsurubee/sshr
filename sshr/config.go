@@ -7,12 +7,12 @@ import (
 )
 
 type config struct {
-	ListenAddr      string `toml:"listen_addr"`
-	RemoteAddr      string `toml:"remote_addr"`
-	DestinationPort string `toml:"destination_port"`
-	HostKeyPath     string `toml:"server_hostkey_path"`
-	UseMasterKey    bool   `toml:"use_master_key"`
-	MasterKeyPath   string `toml:"master_key_path"`
+	ListenAddr      string   `toml:"listen_addr"`
+	RemoteAddr      string   `toml:"remote_addr"`
+	DestinationPort string   `toml:"destination_port"`
+	HostKeyPath     []string `toml:"server_hostkey_path"`
+	UseMasterKey    bool     `toml:"use_master_key"`
+	MasterKeyPath   string   `toml:"master_key_path"`
 }
 
 func loadConfig(path string) (*config, error) {
@@ -30,15 +30,18 @@ func loadConfig(path string) (*config, error) {
 func newServerConfig(c *config) (*ssh.ServerConfig, error) {
 	serverConfig := &ssh.ServerConfig{}
 
-	privateKeyBytes, err := ioutil.ReadFile(c.HostKeyPath)
-	if err != nil {
-		return nil, err
+	for _, k := range c.HostKeyPath {
+		privateKeyBytes, err := ioutil.ReadFile(k)
+		if err != nil {
+			return nil, err
+		}
+		privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
+		if err != nil {
+			return nil, err
+		}
+		serverConfig.AddHostKey(privateKey)
 	}
-	privateKey, err := ssh.ParsePrivateKey(privateKeyBytes)
-	if err != nil {
-		return nil, err
-	}
-	serverConfig.AddHostKey(privateKey)
+
 	return serverConfig, nil
 }
 
