@@ -15,7 +15,7 @@ ci: depsdev test integration vet lint
 
 depsdev: ## Installing dependencies for development
 	$(GO) get golang.org/x/lint/golint
-	$(GO) get -u github.com/tcnksm/ghr
+	$(GO) get github.com/tcnksm/ghr
 
 server:
 	$(GO) run main.go
