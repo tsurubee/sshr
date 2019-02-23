@@ -10,9 +10,9 @@ require (
 	github.com/pkg/sftp v1.10.0
 	github.com/sirupsen/logrus v1.3.0
 	github.com/stretchr/testify v1.3.0 // indirect
-	golang.org/x/crypto v0.0.0-20190219172222-a4c6cb3142f2
+	golang.org/x/crypto v0.0.0-20190222235706-ffb98f73852f
 	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4
-	golang.org/x/sys v0.0.0-20190221075227-b4e8571b14e0 // indirect
+	golang.org/x/sys v0.0.0-20190222171317-cd391775e71e // indirect
 )
 
 replace golang.org/x/crypto => github.com/tsurubee/sshr.crypto v0.0.0-20181101225729-a944237b3cab
