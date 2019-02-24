@@ -2,7 +2,6 @@ INFO_COLOR=\033[1;34m
 RESET=\033[0m
 BOLD=\033[1m
 TEST ?= $(shell $(GO) list ./... | grep -v vendor)
-VERSION = $(shell cat version)
 REVISION = $(shell git describe --always)
 ifeq ("$(shell uname)","Darwin")
 GO ?= GO111MODULE=on go
@@ -15,7 +14,6 @@ ci: depsdev test integration vet lint
 
 depsdev: ## Installing dependencies for development
 	$(GO) get golang.org/x/lint/golint
-	$(GO) get github.com/tcnksm/ghr
 
 server:
 	$(GO) run main.go
@@ -23,13 +21,6 @@ server:
 build: ## Build as linux binary
 	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Building$(RESET)"
 	$(GO) build -o sshr_bin main.go
-
-ghr: ## Upload to Github releases without token check
-	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Releasing for Github$(RESET)"
-	ghr -u tsurubee v$(VERSION)-$(REVISION) pkg
-
-dist: build ## Upload to Github releases
-	@test -z $(GITHUB_TOKEN) || test -z $(GITHUB_API) || $(MAKE) ghr
 
 test: ## Run test
 	@echo "$(INFO_COLOR)==> $(RESET)$(BOLD)Testing$(RESET)"
