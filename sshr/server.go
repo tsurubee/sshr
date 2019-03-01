@@ -65,6 +65,7 @@ func (server *SSHServer) serve() error {
 
 	for {
 		conn, err := server.listener.Accept()
+		conn = conn.(*net.TCPConn)
 		if err != nil {
 			if os.Getenv("SERVER_STARTER_PORT") != "" {
 				break
