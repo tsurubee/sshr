@@ -11,6 +11,7 @@ require (
 	github.com/sirupsen/logrus v1.3.0
 	github.com/stretchr/testify v1.3.0 // indirect
 	golang.org/x/crypto v0.0.0-20190222235706-ffb98f73852f
+	golang.org/x/lint v0.0.0-20190227174305-5b3e6a55c961 // indirect
 	golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4
 	golang.org/x/sys v0.0.0-20190222171317-cd391775e71e // indirect
 )
