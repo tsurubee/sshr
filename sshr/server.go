@@ -65,7 +65,8 @@ func (server *SSHServer) serve() error {
 
 	for {
 		conn, err := server.listener.Accept()
-		conn = conn.(*net.TCPConn)
+		tcpConn := conn.(*net.TCPConn)
+		tcpConn.SetKeepAlive(true)
 		if err != nil {
 			if os.Getenv("SERVER_STARTER_PORT") != "" {
 				break
@@ -75,17 +76,17 @@ func (server *SSHServer) serve() error {
 				return err
 			}
 		}
-		logrus.Info("SSH Client connected. ", "ClientIP=", conn.RemoteAddr())
+		logrus.Info("SSH Client connected. ", "ClientIP=", tcpConn.RemoteAddr())
 
 		eg.Go(func() error {
-			p, err := newSSHProxyConn(conn, server.ProxyConfig)
+			p, err := newSSHProxyConn(tcpConn, server.ProxyConfig)
 			if err != nil {
-				logrus.Infof("Connection from %v closed. %v", conn.RemoteAddr(), err)
+				logrus.Infof("Connection from %v closed. %v", tcpConn.RemoteAddr(), err)
 				return err
 			}
-			logrus.Infof("Establish a proxy connection between %v and %v", conn.RemoteAddr(), server.ProxyConfig.DestinationHost)
+			logrus.Infof("Establish a proxy connection between %v and %v", tcpConn.RemoteAddr(), server.ProxyConfig.DestinationHost)
 			err = p.Wait()
-			logrus.Infof("Connection from %v closed. %v", conn.RemoteAddr(), err)
+			logrus.Infof("Connection from %v closed. %v", tcpConn.RemoteAddr(), err)
 			return err
 		})
 	}
