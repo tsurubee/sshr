@@ -65,8 +65,6 @@ func (server *SSHServer) serve() error {
 
 	for {
 		conn, err := server.listener.Accept()
-		tcpConn := conn.(*net.TCPConn)
-		tcpConn.SetKeepAlive(true)
 		if err != nil {
 			if os.Getenv("SERVER_STARTER_PORT") != "" {
 				break
@@ -76,6 +74,8 @@ func (server *SSHServer) serve() error {
 				return err
 			}
 		}
+		tcpConn := conn.(*net.TCPConn)
+		tcpConn.SetKeepAlive(true)
 		logrus.Info("SSH Client connected. ", "ClientIP=", tcpConn.RemoteAddr())
 
 		eg.Go(func() error {
