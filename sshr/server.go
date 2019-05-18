@@ -84,7 +84,7 @@ func (server *SSHServer) serve() error {
 				logrus.Infof("Connection from %v closed. %v", tcpConn.RemoteAddr(), err)
 				return err
 			}
-			logrus.Infof("Establish a proxy connection between %v and %v", tcpConn.RemoteAddr(), server.ProxyConfig.DestinationHost)
+			logrus.Infof("Establish a proxy connection between %v and %v", tcpConn.RemoteAddr(), p.DestinationHost)
 			err = p.Wait()
 			logrus.Infof("Connection from %v closed. %v", tcpConn.RemoteAddr(), err)
 			return err
