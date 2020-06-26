@@ -1,7 +1,5 @@
 module github.com/tsurubee/sshr
 
-go 1.14
-
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Gurpartap/logrus-stack v0.0.0-20170710170904-89c00d8a28f4
