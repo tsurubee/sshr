@@ -92,6 +92,10 @@ Type: func(username string) ([]byte, error)
 ```
 If not specified, privatekey whose file path is `/home/<username>/.ssh/id_rsa` is used.  
 
+## Publications
+
+1. H. Tsuruta and R. Matsumoto, “[sshr: An SSH Proxy Server Responsive to System Changes without Forcing Clients to Change](https://ieeexplore.ieee.org/document/9202744)”, in *The 15th IEEE International Workshop on Security, Trust & Privacy for Software Applications (STPSA 2020)*, July 2020.
+
 ## License
 
 [MIT](https://github.com/tsurubee/sshr/blob/master/LICENSE)
