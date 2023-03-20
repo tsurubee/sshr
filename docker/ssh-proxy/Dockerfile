@@ -1,4 +1,4 @@
-FROM golang:1.12-stretch
+FROM golang:1.20
 
 RUN mkdir -p /home/tsurubee/.ssh /home/hoge/.ssh
 
