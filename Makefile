@@ -13,7 +13,7 @@ default: build
 ci: depsdev test integration vet lint
 
 depsdev: ## Installing dependencies for development
-	$(GO) get golang.org/x/lint/golint
+	$(GO) install golang.org/x/lint/golint@latest
 
 server:
 	$(GO) run main.go
