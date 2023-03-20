@@ -116,7 +116,7 @@ func (server *SSHServer) Run() error {
 		done <- struct{}{}
 	}()
 
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGHUP, syscall.SIGTERM)
 Loop:
 	for {
