@@ -5,10 +5,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"golang.org/x/sync/errgroup"
+
+	"github.com/lestrrat/go-server-starter/listener"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
-	"github.com/lestrrat/go-server-starter/listener"
+	"golang.org/x/sync/errgroup"
 )
 
 type SSHServer struct {
@@ -79,14 +80,18 @@ func (server *SSHServer) serve() error {
 		logrus.Info("SSH Client connected. ", "ClientIP=", tcpConn.RemoteAddr())
 
 		eg.Go(func() error {
+			logger := &logger{
+				user: "unknown",
+			}
 			p, err := newSSHProxyConn(tcpConn, server.ProxyConfig)
 			if err != nil {
-				logrus.Infof("Connection from %v closed. %v", tcpConn.RemoteAddr(), err)
+				logger.info("Connection from %s closed. %v", tcpConn.RemoteAddr().String(), err)
 				return err
 			}
-			logrus.Infof("Establish a proxy connection between %v and %v", tcpConn.RemoteAddr(), p.DestinationHost)
+			logger.user = p.User
+			logger.info("Establish a proxy connection between %s and %s with username %s", tcpConn.RemoteAddr().String(), p.DestinationHost, p.User)
 			err = p.Wait()
-			logrus.Infof("Connection from %v closed. %v", tcpConn.RemoteAddr(), err)
+			logger.info("Connection from %s closed.", tcpConn.RemoteAddr().String())
 			return err
 		})
 	}
