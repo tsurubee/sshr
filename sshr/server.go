@@ -84,11 +84,13 @@ func (server *SSHServer) serve() error {
 				user: "unknown",
 			}
 			p, err := newSSHProxyConn(tcpConn, server.ProxyConfig)
+			if p != nil {
+				logger.user = p.User
+			}
 			if err != nil {
 				logger.info("Connection from %s closed. %v", tcpConn.RemoteAddr().String(), err)
 				return err
 			}
-			logger.user = p.User
 			logger.info("Establish a proxy connection between %s and %s with username %s", tcpConn.RemoteAddr().String(), p.DestinationHost, p.User)
 			err = p.Wait()
 			logger.info("Connection from %s closed.", tcpConn.RemoteAddr().String())
