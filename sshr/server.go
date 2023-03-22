@@ -91,7 +91,7 @@ func (server *SSHServer) serve() error {
 				logger.info("Connection from %s closed. %v", tcpConn.RemoteAddr().String(), err)
 				return err
 			}
-			logger.info("Establish a proxy connection between %s and %s with username %s", tcpConn.RemoteAddr().String(), p.DestinationHost, p.User)
+			logger.info("Establish a proxy connection between %s and %s", tcpConn.RemoteAddr().String(), p.DestinationHost)
 			err = p.Wait()
 			logger.info("Connection from %s closed.", tcpConn.RemoteAddr().String())
 			return err
