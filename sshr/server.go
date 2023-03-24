@@ -81,7 +81,7 @@ func (server *SSHServer) serve() error {
 
 		eg.Go(func() error {
 			logger := &logger{
-				user: "unknown",
+				user: "-",
 			}
 			p, err := newSSHProxyConn(tcpConn, server.ProxyConfig)
 			if p != nil {
