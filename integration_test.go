@@ -3,16 +3,16 @@ package main
 import (
 	"bytes"
 	"flag"
-	"testing"
-	"os"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path"
-	"time"
 	"strings"
-	"golang.org/x/crypto/ssh"
+	"testing"
+	"time"
+
 	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
 )
 
 var (
@@ -41,7 +41,7 @@ func loginByPassword(username string, port int, password string) (*ssh.Client, *
 }
 
 func loginByPublicKey(username string, port int, keyPath string) (*ssh.Client, *ssh.Session, error) {
-	privateKeyBytes, err := ioutil.ReadFile(keyPath)
+	privateKeyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -88,7 +88,7 @@ func uploadFileByScp(sess *ssh.Session, uploadFile string, permission string) er
 	defer f.Close()
 	filename := path.Base(uploadFile)
 
-	contentsBytes, err := ioutil.ReadAll(f)
+	contentsBytes, err := io.ReadAll(f)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func TestLoginByPassword(t *testing.T) {
 			name:     "success login",
 			username: "tsurubee",
 			password: "failpass",
-			wantErr:   true,
+			wantErr:  true,
 		},
 	}
 

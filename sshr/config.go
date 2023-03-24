@@ -1,9 +1,10 @@
 package sshr
 
 import (
+	"os"
+
 	"github.com/BurntSushi/toml"
 	"golang.org/x/crypto/ssh"
-	"io/ioutil"
 )
 
 type config struct {
@@ -31,7 +32,7 @@ func newServerConfig(c *config) (*ssh.ServerConfig, error) {
 	serverConfig := &ssh.ServerConfig{}
 
 	for _, k := range c.HostKeyPath {
-		privateKeyBytes, err := ioutil.ReadFile(k)
+		privateKeyBytes, err := os.ReadFile(k)
 		if err != nil {
 			return nil, err
 		}
