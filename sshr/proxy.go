@@ -2,6 +2,7 @@ package sshr
 
 import (
 	"net"
+
 	"golang.org/x/crypto/ssh"
 )
 
@@ -22,21 +23,26 @@ func newSSHProxyConn(conn net.Conn, proxyConf *ssh.ProxyConfig) (proxyConn *ssh.
 	}
 
 	username := authRequestMsg.User
+	p := &ssh.ProxyConn{
+		User:       username,
+		Downstream: d,
+	}
 	upstreamHost, err := proxyConf.FindUpstreamHook(username)
 	if err != nil {
-		return nil, err
+		return p, err
 	}
+	p.DestinationHost = upstreamHost
 
-	upConn, err := net.Dial("tcp", upstreamHost + ":" + proxyConf.DestinationPort)
+	upConn, err := net.Dial("tcp", upstreamHost+":"+proxyConf.DestinationPort)
 	if err != nil {
-		return nil, err
+		return p, err
 	}
 
 	u, err := ssh.NewUpstreamConn(upConn, &ssh.ClientConfig{
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	})
 	if err != nil {
-		return nil, err
+		return p, err
 	}
 	defer func() {
 		if proxyConn == nil {
@@ -44,15 +50,10 @@ func newSSHProxyConn(conn net.Conn, proxyConf *ssh.ProxyConfig) (proxyConn *ssh.
 		}
 	}()
 
-	p := &ssh.ProxyConn{
-		User:            username,
-		DestinationHost: upstreamHost,
-		Upstream:   u,
-		Downstream: d,
-	}
+	p.Upstream = u
 
 	if err = p.AuthenticateProxyConn(authRequestMsg, proxyConf); err != nil {
-		return nil, err
+		return p, err
 	}
 
 	return p, nil
