@@ -89,6 +89,10 @@ func (server *SSHServer) serve() error {
 			}
 			if err != nil {
 				logger.infof("Connection from %s closed. %v", tcpConn.RemoteAddr().String(), err)
+				// close sockets if proxy conn is not nil and got error
+				if p != nil {
+					p.Close()
+				}
 				return err
 			}
 			logger.infof("Establish a proxy connection between %s and %s", tcpConn.RemoteAddr().String(), p.DestinationHost)
