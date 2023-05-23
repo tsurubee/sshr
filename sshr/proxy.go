@@ -29,6 +29,9 @@ func newSSHProxyConn(conn net.Conn, proxyConf *ssh.ProxyConfig) (proxyConn *ssh.
 	}
 	upstreamHost, err := proxyConf.FindUpstreamHook(username)
 	if err != nil {
+		if err := p.SendFailureMsg(err.Error()); err != nil {
+			return p, err
+		}
 		return p, err
 	}
 	p.DestinationHost = upstreamHost
