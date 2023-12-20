@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/sirupsen/logrus"
 	"github.com/Gurpartap/logrus-stack"
-	"github.com/tsurubee/sshr/sshr"
+	"github.com/heat1024/sshr/sshr"
 	"errors"
 )
 
